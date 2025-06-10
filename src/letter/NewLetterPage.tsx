@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent, FormEvent, useEffect } from 'react';
+import React, { useState, useRef, ChangeEvent, FormEvent, useEffect, FocusEvent } from 'react';
 import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse } from 'wasp/client/operations';
 import Confetti from 'react-confetti';
@@ -23,11 +23,9 @@ export default function NewLetterPage() {
   const mainRef = useRef<HTMLDivElement>(null);
   const scrollToTop = () => mainRef.current?.scrollIntoView({ behavior: 'smooth' });
 
-  // Steps now from 1 to 5
   const totalSteps = 5;
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Form state
   const initialForm = {
     letterType: 'academic',
     recName: '', recTitle: '', recOrg: '', relationship: 'manager', knownTime: 'lt1',
@@ -38,96 +36,130 @@ export default function NewLetterPage() {
     file: null as File | null
   };
   const [form, setForm] = useState(initialForm);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [draft, setDraft] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // Map for knownTime
   const KNOWN_TIMES: Record<string, string> = {
     lt1: 'less than 1 year',
     btw1and3: 'between 1 and 3 years',
     gt3: 'more than 3 years'
   };
 
-  // Progress bar
   const getProgress = () => (currentStep / totalSteps) * 100;
 
-  // Validate required fields per step
   const isStepComplete = () => {
     switch (currentStep) {
-      case 1: return Boolean(form.letterType);
-      case 2: return Boolean(form.recName && form.recTitle && form.recOrg);
-      case 3: return Boolean(form.applicantName);
-      default: return true;
+      case 1:
+        return Boolean(form.letterType);
+      case 2:
+        return Boolean(form.recName && form.recTitle && form.recOrg);
+      case 3:
+        return Boolean(form.applicantName);
+      default:
+        return true;
     }
   };
 
-  // Navigation
   const handleNext = () => {
-    if (isStepComplete() && currentStep < totalSteps) {
-      setCurrentStep(s => s + 1);
+    setTouched({});
+    if (!isStepComplete()) {
+      if (currentStep === 2) setTouched({ recName: true, recTitle: true, recOrg: true });
+      if (currentStep === 3) setTouched({ applicantName: true });
+      return;
+    }
+    if (currentStep < totalSteps) {
+      setCurrentStep((s) => s + 1);
       scrollToTop();
     }
   };
+
   const handlePrev = () => {
+    setTouched({});
     if (currentStep > 1) {
-      setCurrentStep(s => s - 1);
+      setCurrentStep((s) => s - 1);
       scrollToTop();
     }
   };
 
-  // Handle input changes
-  const handleChange = (e: ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, type, value, checked } = e.target as HTMLInputElement;
-    setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // Handle file upload
+  const handleBlur = (
+    e: FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name } = e.target;
+    setTouched((t) => ({ ...t, [name]: true }));
+  };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setForm(f => ({ ...f, file }));
+    setForm((f) => ({ ...f, file }));
   };
 
-  // Submit form: build prompt and call server action
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isGuest && localStorage.getItem('guestUsed')) {
       window.location.href = '/login';
       return;
     }
+    setErrorMsg('');
     setIsGenerating(true);
 
     const frags: string[] = [];
-    frags.push(`Write a ${form.letterType} recommendation letter in ${form.language === 'spanish' ? 'Spanish' : 'English'}.`);
-    frags.push(`Recommender: ${form.recName}, ${form.recTitle} at ${form.recOrg}, known for ${KNOWN_TIMES[form.knownTime]}.`);
+    frags.push(
+      `Write a ${form.letterType} recommendation letter in ${
+        form.language === 'spanish' ? 'Spanish' : 'English'
+      }.`
+    );
+    frags.push(
+      `Recommender: ${form.recName}, ${form.recTitle} at ${form.recOrg}, known for ${
+        KNOWN_TIMES[form.knownTime]
+      }.`
+    );
     frags.push(`Applicant: ${form.applicantName}.`);
-    if (form.recipientName) frags.push(`Recipient: ${form.recipientName}, position ${form.recipientPosition}.`);
+    if (form.recipientName)
+      frags.push(
+        `Recipient: ${form.recipientName}, position ${form.recipientPosition}.`
+      );
     if (form.achievements) frags.push(`Highlight achievements: ${form.achievements}.`);
     if (form.skills) frags.push(`Include skills: ${form.skills}.`);
     if (form.qualities) frags.push(`Emphasize qualities: ${form.qualities}.`);
-    if (['scholarship','graduate'].includes(form.letterType) && form.gpa) frags.push(`Applicant GPA: ${form.gpa}.`);
-    if (form.letterType === 'immigration' && form.visaType) frags.push(`Visa type: ${form.visaType}.`);
-    if (form.letterType === 'tenant' && form.rentalAddress) frags.push(`Rental property: ${form.rentalAddress}.`);
-    if (form.letterType === 'medical' && form.residencySpecialty) frags.push(`Residency specialty: ${form.residencySpecialty}.`);
+    if (['scholarship', 'graduate'].includes(form.letterType) && form.gpa)
+      frags.push(`Applicant GPA: ${form.gpa}.`);
+    if (form.letterType === 'immigration' && form.visaType)
+      frags.push(`Visa type: ${form.visaType}.`);
+    if (form.letterType === 'tenant' && form.rentalAddress)
+      frags.push(`Rental property: ${form.rentalAddress}.`);
+    if (form.letterType === 'medical' && form.residencySpecialty)
+      frags.push(`Residency specialty: ${form.residencySpecialty}.`);
     frags.push(`Use a ${form.formality} and ${form.tone} tone. Creativity level: ${form.creativity}.`);
 
     const prompt = frags.join(' ');
     try {
       const res: any = await (generateGptResponse as any)({ prompt } as any);
       setDraft(res.text || '');
-      if (isGuest) localStorage.setItem('guestUsed','1');
+      if (isGuest) localStorage.setItem('guestUsed', '1');
       setShowConfetti(true);
+      setSuccessMsg('Your letter is ready!');
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: any) {
       console.error(err);
       if (err.message === 'NO_CREDITS') window.location.href = '/pricing?credits=0';
-      else alert('Something went wrong.');
+      else setErrorMsg('Oops! Something went wrong. Please try again or contact support.');
     } finally {
       setIsGenerating(false);
       scrollToTop();
     }
   };
 
-  // Confetti cleanup
   useEffect(() => {
     if (showConfetti) {
       const t = setTimeout(() => setShowConfetti(false), 5000);
@@ -138,12 +170,27 @@ export default function NewLetterPage() {
   return (
     <main
       ref={mainRef}
-      className="mx-auto max-w-screen-lg px-12 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl space-y-10 mt-10"
+      className="mx-auto max-w-screen-lg px-12 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl space-y-6 mt-10"
     >
       {showConfetti && <Confetti numberOfPieces={200} />}
+      {successMsg && (
+        <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-md">
+          ✅ {successMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+          {errorMsg}
+        </div>
+      )}
+
       <h1 className="text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
-        Generate <span className='text-yellow-500'> Recommendation Letter</span> 
+        Generate <span className="text-yellow-500">Recommendation Letter</span>
       </h1>
+
+      <div className="text-center text-lg font-medium">
+        Step {currentStep} of {totalSteps}
+      </div>
       <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
         <div
           className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 transition-all"
@@ -178,42 +225,55 @@ export default function NewLetterPage() {
             <div className="grid gap-8">
               <div>
                 <label htmlFor="recName" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Recommender Name
+                  Recommender Name <span className="text-red-500">*</span>
                 </label>
                 <input
-                  id="recName"
-                  name="recName"
-                  value={form.recName}
-                  onChange={handleChange}
+                  id="recName" 
+                  name="recName" 
+                  value={form.recName} 
+                  onChange={handleChange} 
+                  onBlur={handleBlur} 
+                  autoFocus 
                   placeholder="e.g., Jane Doe"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400" 
                 />
+                {touched.recName && !form.recName && (
+                  <p className="text-red-500 text-sm mt-1">Please enter the recommender's name.</p>
+                )}
               </div>
               <div>
                 <label htmlFor="recTitle" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Title / Position
+                  Title / Position <span className="text-red-500">*</span>
                 </label>
                 <input
-                  id="recTitle"
-                  name="recTitle"
-                  value={form.recTitle}
-                  onChange={handleChange}
+                  id="recTitle" 
+                  name="recTitle" 
+                  value={form.recTitle} 
+                  onChange={handleChange} 
+                  onBlur={handleBlur} 
                   placeholder="e.g., Senior Manager"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400" 
                 />
+                {touched.recTitle && !form.recTitle && (
+                  <p className="text-red-500 text-sm mt-1">Please enter the recommender's title.</p>
+                )}
               </div>
               <div>
                 <label htmlFor="recOrg" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Organization
+                  Organization <span className="text-red-500">*</span>
                 </label>
                 <input
-                  id="recOrg"
-                  name="recOrg"
-                  value={form.recOrg}
-                  onChange={handleChange}
+                  id="recOrg" 
+                  name="recOrg" 
+                  value={form.recOrg} 
+                  onChange={handleChange} 
+                  onBlur={handleBlur} 
                   placeholder="e.g., Acme Corp"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400" 
                 />
+                {touched.recOrg && !form.recOrg && (
+                  <p className="text-red-500 text-sm mt-1">Please enter the organization.</p>
+                )}
               </div>
               <div className="md:grid md:grid-cols-2 md:gap-8">
                 <div>
@@ -221,9 +281,9 @@ export default function NewLetterPage() {
                     Relationship
                   </label>
                   <select
-                    id="relationship"
-                    name="relationship"
-                    value={form.relationship}
+                    id="relationship" 
+                    name="relationship" 
+                    value={form.relationship} 
                     onChange={handleChange}
                     className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   >
@@ -239,9 +299,9 @@ export default function NewLetterPage() {
                     Known Time
                   </label>
                   <select
-                    id="knownTime"
-                    name="knownTime"
-                    value={form.knownTime}
+                    id="knownTime" 
+                    name="knownTime" 
+                    value={form.knownTime} 
                     onChange={handleChange}
                     className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   >
@@ -259,16 +319,21 @@ export default function NewLetterPage() {
             <div className="grid gap-8">
               <div>
                 <label htmlFor="applicantName" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Applicant Name
+                  Applicant Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="applicantName"
                   name="applicantName"
                   value={form.applicantName}
                   onChange={handleChange}
+                  onBlur={handleBlur}
+                  autoFocus
                   placeholder="e.g., John Smith"
                   className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 />
+                {touched.applicantName && !form.applicantName && (
+                  <p className="text-red-500 text-sm mt-1">Please enter the applicant's name.</p>
+                )}
               </div>
               <div>
                 <label htmlFor="achievements" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
@@ -315,12 +380,12 @@ export default function NewLetterPage() {
             </div>
           )}
 
-          {/* Step 4: Recipient & Conditional */}
+          {/* Step 4: Recipient & Conditional Fields */}
           {currentStep === 4 && (
             <div className="grid gap-8">
               <div>
-                <label htmlFor="recipientName" className="block text-lg font-semibold mb-2">
-                  Recipient Name (opt.)
+                <label htmlFor="recipientName" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                  Recipient Name (optional)
                 </label>
                 <input
                   id="recipientName"
@@ -332,8 +397,8 @@ export default function NewLetterPage() {
                 />
               </div>
               <div>
-                <label htmlFor="recipientPosition" className="block text-lg font-semibold mb-2">
-                  Recipient Position (opt.)
+                <label htmlFor="recipientPosition" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                  Recipient Position (optional)
                 </label>
                 <input
                   id="recipientPosition"
@@ -346,23 +411,23 @@ export default function NewLetterPage() {
               </div>
               {['scholarship','graduate'].includes(form.letterType) && (
                 <div>
-                  <label htmlFor="gpa" className="block text-lg font-semibold mb-2">
-                    Applicant GPA (opt.)
+                  <label htmlFor="gpa" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Applicant GPA (optional)
                   </label>
                   <input
                     id="gpa"
                     name="gpa"
                     value={form.gpa}
-                    placeholder="e.g., 3.8/4.0"
                     onChange={handleChange}
+                    placeholder="e.g., 3.8/4.0"
                     className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
               )}
               {form.letterType === 'immigration' && (
                 <div>
-                  <label htmlFor="visaType" className="block text-lg font-semibold mb-2">
-                    Visa Type (opt.)
+                  <label htmlFor="visaType" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Visa Type (optional)
                   </label>
                   <input
                     id="visaType"
@@ -376,8 +441,8 @@ export default function NewLetterPage() {
               )}
               {form.letterType === 'tenant' && (
                 <div>
-                  <label htmlFor="rentalAddress" className="block text-lg font-semibold mb-2">
-                    Rental Address (opt.)
+                  <label htmlFor="rentalAddress" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Rental Address (optional)
                   </label>
                   <input
                     id="rentalAddress"
@@ -391,8 +456,8 @@ export default function NewLetterPage() {
               )}
               {form.letterType === 'medical' && (
                 <div>
-                  <label htmlFor="residencySpecialty" className="block text-lg font-semibold mb-2">
-                    Residency Specialty (opt.)
+                  <label htmlFor="residencySpecialty" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Residency Specialty (optional)
                   </label>
                   <input
                     id="residencySpecialty"
@@ -406,11 +471,12 @@ export default function NewLetterPage() {
               )}
             </div>
           )}
- {/* Step 5: Tone & Language with Generate */}
- {currentStep === 5 && (
+
+          {/* Step 5: Tone & Generate */}
+          {currentStep === 5 && (
             <div className="space-y-6">
               <div>
-                <label htmlFor="language" className="block text-lg font-semibold mb-2">
+                <label htmlFor="language" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Language
                 </label>
                 <select
@@ -425,7 +491,7 @@ export default function NewLetterPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="formality" className="block text-lg font-semibold mb-2">
+                <label htmlFor="formality" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Formality
                 </label>
                 <select
@@ -441,7 +507,7 @@ export default function NewLetterPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="tone" className="block text-lg font-semibold mb-2">
+                <label htmlFor="tone" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Tone
                 </label>
                 <select
@@ -458,7 +524,7 @@ export default function NewLetterPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="creativity" className="block text-lg font-semibold mb-2">
+                <label htmlFor="creativity" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Creativity Level
                 </label>
                 <input
@@ -475,10 +541,10 @@ export default function NewLetterPage() {
                 <div className="text-sm">Current: {form.creativity}</div>
               </div>
 
-              {/* File Upload Option */}
+              {/* File Upload */}
               <div>
-                <label htmlFor="file" className="block text-lg font-semibold mb-2">
-                  Upload Supporting Document (PDF, DOC/DOCX, CSV) (optional)
+                <label htmlFor="file" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                  Upload Supporting Document (optional)
                 </label>
                 <input
                   id="file"
@@ -489,23 +555,21 @@ export default function NewLetterPage() {
                   className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400"
                 />
               </div>
-                {/* Recordatorio de carta gratis */}
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                 *Remember that you get one free letter per month.
-                </p>
-              {/* Back + Generate Buttons */}
+              <p className="text-sm text-gray-500 dark:text-gray-400">*Remember you get one free letter per month, if you need more, you can buy credits. </p>
+
+              {/* Navigation */}
               <div className="flex space-x-4">
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  className="flex-1 py-4 bg-gray-500 text-white rounded-xl text-lg font-semibold hover:bg-gray-600 transition"
+                <button 
+                  type="button" 
+                  onClick={handlePrev} 
+                  className="flex-1 py-4 bg-gray-500 text-white rounded-xl font-semibold hover:bg-gray-600"
                 >
                   Previous
                 </button>
-                <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="flex-1 py-4 bg-green-600 text-white rounded-xl text-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                <button 
+                  type="submit" 
+                  disabled={isGenerating} 
+                  className="flex-1 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50"
                 >
                   {isGenerating ? 'Generating...' : 'Generate Letter'}
                 </button>
@@ -538,19 +602,19 @@ export default function NewLetterPage() {
       ) : (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">Generated Letter</h2>
-          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg" aria-live="polite">
+          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg">
             {draft}
           </div>
           <div className="flex space-x-4">
-            <button
-              onClick={() => navigator.clipboard.writeText(draft)}
-              className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            <button 
+              onClick={() => navigator.clipboard.writeText(draft)} 
+              className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Copy to Clipboard
             </button>
-            <button
-              onClick={() => setDraft('')}
-              className="flex-1 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            <button 
+              onClick={() => setDraft('')} 
+              className="flex-1 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
             >
               Generate Another
             </button>
