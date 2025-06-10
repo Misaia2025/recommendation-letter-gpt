@@ -3,7 +3,7 @@ import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse } from 'wasp/client/operations';
 
 export default function NewLetterPage() {
-  // Detectamos si el usuario está logueado o no
+  // Detectamos si el usuario está logueado o es invitado
   const { data: user } = useAuth();
   const isGuest = !user;
 
