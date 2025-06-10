@@ -1,34 +1,58 @@
-import { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
+import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse } from 'wasp/client/operations';
 
 export default function NewLetterPage() {
-  const [form, setForm] = useState({ applicant: '', recommender: '', context: '' });
+  // Detectamos si el usuario está logueado o no
+  const { data: user } = useAuth();
+  const isGuest = !user;
+
+  const [form, setForm] = useState({
+    applicant: '',
+    recommender: '',
+    context: '',
+  });
   const [draft, setDraft] = useState('');
 
-  const handleChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const prompt = `
-      Write a ${form.context} recommendation letter.
-      Recommender: ${form.recommender}.
-      Applicant: ${form.applicant}.`;
+
+    // Si es invitado y ya usó su crédito gratuito, pedir login
+    if (isGuest && localStorage.getItem('guestUsed')) {
+      window.location.href = '/login';
+      return;
+    }
+
+    const prompt = `Write a ${form.context} recommendation letter.
+Recommender: ${form.recommender}.
+Applicant: ${form.applicant}.`;
 
     try {
-        const rawRes: any = await (generateGptResponse as any)({ prompt } as any);
-        const text = rawRes.text ?? '';
+      const rawRes: any = await (generateGptResponse as any)({ prompt } as any);
+      const text = rawRes.text ?? '';
       setDraft(text);
-    } catch (err) {
-      if ((err as any)?.message === 'NO_CREDITS') window.location.href = '/pricing';
-      else alert('Something went wrong.');
+
+      // Marcamos uso de crédito gratis para invitado
+      if (isGuest) {
+        localStorage.setItem('guestUsed', '1');
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.message === 'NO_CREDITS') {
+        window.location.href = '/pricing?credits=0';
+      } else {
+        alert('Something went wrong.');
+      }
     }
   };
 
   return (
     <main className='mx-auto max-w-xl py-20 px-6'>
       <h1 className='text-3xl font-bold mb-8'>Generate Recommendation Letter</h1>
-
       <form onSubmit={handleSubmit} className='space-y-6'>
         <input
           name='applicant'
@@ -55,7 +79,6 @@ export default function NewLetterPage() {
           <option value='professional'>Professional</option>
           <option value='character'>Character / Personal</option>
         </select>
-
         <button
           type='submit'
           className='w-full rounded bg-[#5B2D90] hover:bg-[#8B5E3C] text-white py-2 font-semibold'
@@ -63,7 +86,6 @@ export default function NewLetterPage() {
           Generate
         </button>
       </form>
-
       {draft && (
         <textarea
           className='mt-10 w-full h-64 border rounded p-4'

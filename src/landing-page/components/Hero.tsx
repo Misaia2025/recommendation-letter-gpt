@@ -6,14 +6,14 @@ export default function Hero() {
     <div className='relative pt-14 w-full'>
       <TopGradient />
       <BottomGradient />
-      <div className='py-24 sm:py-32'>
+      <div className='py-8 sm:py-18'>
         <div className='mx-auto max-w-8xl px-6 lg:px-8'>
-          <div className='lg:mb-18 mx-auto max-w-3xl text-center'>
+          <div className='lg:mb-20 mx-auto max-w-3xl text-center'>
             <h1 className='text-4xl font-bold text-gray-900 sm:text-6xl dark:text-white'>
-              Some <span className='italic'>cool</span> words about your product
+             Recommendation letters, <span className='text-yellow-500'> done right.</span>
             </h1>
-            <p className='mt-6 mx-auto max-w-2xl text-lg leading-8 text-gray-600 dark:text-white'>
-              With some more exciting words about your product!
+            <p className='mt-6 mx-auto max-w-2xl text-lg sm:text-xl md:text-2xl leading-8 text-gray-700 dark:text-white'>
+            No templates. No stress. Just smart letters.
             </p>
             <div className='mt-10 flex items-center justify-center gap-x-6'>
               <a
