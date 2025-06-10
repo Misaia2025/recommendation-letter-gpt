@@ -34,7 +34,8 @@ export default function NewLetterPage() {
     applicantName: '', achievements: '', skills: '', qualities: '',
     recipientName: '', recipientPosition: '',
     gpa: '', visaType: '', rentalAddress: '', residencySpecialty: '',
-    language: 'english', formality: 'formal', tone: 'enthusiastic', creativity: '0.5'
+    language: 'english', formality: 'formal', tone: 'enthusiastic', creativity: '0.5',
+    file: null as File | null
   };
   const [form, setForm] = useState(initialForm);
   const [draft, setDraft] = useState('');
@@ -79,6 +80,12 @@ export default function NewLetterPage() {
   const handleChange = (e: ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) => {
     const { name, type, value, checked } = e.target as HTMLInputElement;
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  // Handle file upload
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setForm(f => ({ ...f, file }));
   };
 
   // Submit form: build prompt and call server action
@@ -135,7 +142,7 @@ export default function NewLetterPage() {
     >
       {showConfetti && <Confetti numberOfPieces={200} />}
       <h1 className="text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
-        Generate Recommendation Letter
+        Generate <span className='text-yellow-500'> Recommendation Letter</span> 
       </h1>
       <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
         <div
@@ -399,9 +406,8 @@ export default function NewLetterPage() {
               )}
             </div>
           )}
-
-          {/* Step 5: Tone & Language with Generate */}
-          {currentStep === 5 && (
+ {/* Step 5: Tone & Language with Generate */}
+ {currentStep === 5 && (
             <div className="space-y-6">
               <div>
                 <label htmlFor="language" className="block text-lg font-semibold mb-2">
@@ -468,13 +474,39 @@ export default function NewLetterPage() {
                 />
                 <div className="text-sm">Current: {form.creativity}</div>
               </div>
-              <button
-                type="submit"
-                disabled={isGenerating}
-                className="w-full py-4 bg-green-600 text-white rounded-xl text-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
-              >
-                {isGenerating ? 'Generating...' : 'Generate Letter'}
-              </button>
+
+              {/* File Upload Option */}
+              <div>
+                <label htmlFor="file" className="block text-lg font-semibold mb-2">
+                  Upload Supporting Document (PDF, DOC/DOCX, CSV) (optional)
+                </label>
+                <input
+                  id="file"
+                  name="file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.csv"
+                  onChange={handleFileChange}
+                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              {/* Back + Generate Buttons */}
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="flex-1 py-4 bg-gray-500 text-white rounded-xl text-lg font-semibold hover:bg-gray-600 transition"
+                >
+                  Previous
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGenerating}
+                  className="flex-1 py-4 bg-green-600 text-white rounded-xl text-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Letter'}
+                </button>
+              </div>
             </div>
           )}
 
