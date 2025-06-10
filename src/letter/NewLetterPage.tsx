@@ -1,81 +1,75 @@
-import React, { useState, useRef, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, FormEvent, useEffect } from 'react';
 import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse } from 'wasp/client/operations';
+import Confetti from 'react-confetti';
+
+// Letter type options for Step 1
+const LETTER_TYPES = [
+  { value: 'academic', label: 'Academic (University)' },
+  { value: 'job', label: 'Job / Employment' },
+  { value: 'immigration', label: 'Immigration / Visa' },
+  { value: 'internship', label: 'Internship' },
+  { value: 'scholarship', label: 'Scholarship / Financial Aid' },
+  { value: 'graduate', label: 'Graduate School' },
+  { value: 'medical', label: 'Medical Residency' },
+  { value: 'volunteer', label: 'Volunteer / NGO' },
+  { value: 'tenant', label: 'Tenant / Landlord' },
+  { value: 'personal', label: 'Personal / Character' }
+];
 
 export default function NewLetterPage() {
   const { data: user } = useAuth();
   const isGuest = !user;
-
-  // ---------------------------------------------------------------------------
-  // Form state and navigation
-  // ---------------------------------------------------------------------------
-  const initialFormState = {
-    /* Step 1 */
-    letterType: 'academic',
-
-    /* Step 2 – Recommender */
-    recName: '',
-    recTitle: '',
-    recOrg: '',
-    relationship: 'manager',
-    knownTime: 'lt1',
-
-    /* Step 3 – Applicant */
-    applicantName: '',
-    achievements: '',
-    skills: '',
-    qualities: '',
-
-    /* Step 4 – Recipient + extras */
-    recipientName: '',
-    recipientPosition: '',
-    gpa: '',
-    visaType: '',
-    rentalAddress: '',
-    residencySpecialty: '',
-
-    /* Step 5 – Tone & style */
-    language: 'english',
-    formality: 'formal',
-    tone: 'enthusiastic',
-    creativity: '0.5',
-
-    /* Step 6 – Advanced */
-    addAnecdote: false,
-    addMetrics: false,
-    context: '',
-  };
-
-  const [form, setForm] = useState(initialFormState);
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6;
-  const [draft, setDraft] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-
   const mainRef = useRef<HTMLDivElement>(null);
   const scrollToTop = () => mainRef.current?.scrollIntoView({ behavior: 'smooth' });
 
-  const isCurrentStepComplete = () => {
+  // Steps now from 1 to 5
+  const totalSteps = 5;
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Form state
+  const initialForm = {
+    letterType: 'academic',
+    recName: '', recTitle: '', recOrg: '', relationship: 'manager', knownTime: 'lt1',
+    applicantName: '', achievements: '', skills: '', qualities: '',
+    recipientName: '', recipientPosition: '',
+    gpa: '', visaType: '', rentalAddress: '', residencySpecialty: '',
+    language: 'english', formality: 'formal', tone: 'enthusiastic', creativity: '0.5'
+  };
+
+  const [form, setForm] = useState(initialForm);
+  const [draft, setDraft] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // Map for knownTime
+  const KNOWN_TIMES: Record<string, string> = {
+    lt1: 'less than 1 year',
+    btw1and3: 'between 1 and 3 years',
+    gt3: 'more than 3 years'
+  };
+
+  // Progress bar
+  const getProgress = () => (currentStep / totalSteps) * 100;
+
+  // Validate required fields per step
+  const isStepComplete = () => {
     switch (currentStep) {
-      case 1:
-        return !!form.letterType;
-      case 2:
-        return form.recName && form.recTitle && form.recOrg;
-      case 3:
-        return !!form.applicantName;
-      default:
-        return true;
+      case 1: return Boolean(form.letterType);
+      case 2: return Boolean(form.recName && form.recTitle && form.recOrg);
+      case 3: return Boolean(form.applicantName);
+      default: return true;
     }
   };
 
-  const getProgress = () => (currentStep / totalSteps) * 100;
-
+  // Navigation
   const handleNext = () => {
-    if (isCurrentStepComplete() && currentStep < totalSteps) {
+    if (isStepComplete() && currentStep < totalSteps) {
       setCurrentStep(s => s + 1);
       scrollToTop();
     }
   };
+
   const handlePrev = () => {
     if (currentStep > 1) {
       setCurrentStep(s => s - 1);
@@ -83,66 +77,42 @@ export default function NewLetterPage() {
     }
   };
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
+  // Handle input changes
+  const handleChange = (e: ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) => {
     const { name, type, value, checked } = e.target as HTMLInputElement;
     setForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // ---------------------------------------------------------------------------
-  // Submit and prompt building
-  // ---------------------------------------------------------------------------
-  const KNOWN_TIMES: Record<string, string> = {
-    lt1: 'less than 1 year',
-    btw1and3: 'between 1 and 3 years',
-    gt3: 'more than 3 years',
-  };
-
+  // Submit form: build prompt and call server action
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (isGuest && localStorage.getItem('guestUsed')) {
       window.location.href = '/login';
       return;
     }
-
     setIsGenerating(true);
-    const timeText = KNOWN_TIMES[form.knownTime] || form.knownTime;
 
-    let prompt = `Write a ${form.letterType} recommendation letter in ${
-      form.language === 'spanish' ? 'Spanish' : 'English'
-    }.`;
-    prompt += ` Recommender: ${form.recName}, ${form.recTitle} at ${form.recOrg}, known for ${timeText}.`;
-    prompt += ` Applicant: ${form.applicantName}.`;
+    const frags: string[] = [];
+    frags.push(`Write a ${form.letterType} recommendation letter in ${form.language === 'spanish' ? 'Spanish' : 'English'}.`);
+    frags.push(`Recommender: ${form.recName}, ${form.recTitle} at ${form.recOrg}, known for ${KNOWN_TIMES[form.knownTime]}.`);
+    frags.push(`Applicant: ${form.applicantName}.`);
+    if (form.recipientName) frags.push(`Recipient: ${form.recipientName}, position ${form.recipientPosition}.`);
+    if (form.achievements) frags.push(`Highlight achievements: ${form.achievements}.`);
+    if (form.skills) frags.push(`Include skills: ${form.skills}.`);
+    if (form.qualities) frags.push(`Emphasize qualities: ${form.qualities}.`);
+    if (['scholarship','graduate'].includes(form.letterType) && form.gpa) frags.push(`Applicant GPA: ${form.gpa}.`);
+    if (form.letterType === 'immigration' && form.visaType) frags.push(`Visa type: ${form.visaType}.`);
+    if (form.letterType === 'tenant' && form.rentalAddress) frags.push(`Rental property: ${form.rentalAddress}.`);
+    if (form.letterType === 'medical' && form.residencySpecialty) frags.push(`Residency specialty: ${form.residencySpecialty}.`);
+    frags.push(`Use a ${form.formality} and ${form.tone} tone. Creativity level: ${form.creativity}.`);
 
-    if (form.recipientName) prompt += ` Recipient: ${form.recipientName}, position ${form.recipientPosition}.`;
-    if (form.achievements) prompt += ` Highlight achievements: ${form.achievements}.`;
-    if (form.skills) prompt += ` Include skills: ${form.skills}.`;
-    if (form.qualities) prompt += ` Emphasize qualities: ${form.qualities}.`;
-
-    // Conditional extras
-    if (['scholarship', 'graduate'].includes(form.letterType) && form.gpa) {
-      prompt += ` Applicant GPA: ${form.gpa}.`;
-    }
-    if (form.letterType === 'immigration' && form.visaType) {
-      prompt += ` Visa type: ${form.visaType}.`;
-    }
-    if (form.letterType === 'tenant' && form.rentalAddress) {
-      prompt += ` Rental property: ${form.rentalAddress}.`;
-    }
-    if (form.letterType === 'medical' && form.residencySpecialty) {
-      prompt += ` Residency specialty: ${form.residencySpecialty}.`;
-    }
-
-    prompt += ` Use a ${form.formality} and ${form.tone} tone. Creativity level: ${form.creativity}.`;
-    if (form.addAnecdote) prompt += ` Include a specific anecdote.`;
-    if (form.addMetrics) prompt += ` Include quantitative metrics.`;
-    if (form.context) prompt += ` Additional context: ${form.context}.`;
+    const prompt = frags.join(' ');
 
     try {
       const res: any = await (generateGptResponse as any)({ prompt } as any);
       setDraft(res.text || '');
-      if (isGuest) localStorage.setItem('guestUsed', '1');
+      if (isGuest) localStorage.setItem('guestUsed','1');
+      setShowConfetti(true);
     } catch (err: any) {
       console.error(err);
       if (err.message === 'NO_CREDITS') window.location.href = '/pricing?credits=0';
@@ -153,92 +123,73 @@ export default function NewLetterPage() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Styles
-  // ---------------------------------------------------------------------------
-  const inputClass =
-    "w-full rounded px-3 py-2 border border-gray-300 bg-white text-gray-900 placeholder-gray-500 " +
-    "dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400";
+  // Confetti cleanup
+  useEffect(() => {
+    if (showConfetti) {
+      const t = setTimeout(() => setShowConfetti(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [showConfetti]);
 
   return (
-    <main ref={mainRef} className="mx-auto max-w-xl py-20 px-6 space-y-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <h1 className="text-3xl font-bold">Generate Recommendation Letter</h1>
-
-      {/* Progress Bar */}
-      <div className="w-full bg-gray-200 h-2 rounded overflow-hidden">
+    <main ref={mainRef} className="mx-auto max-w-2xl p-8 bg-white dark:bg-gray-900 rounded-xl shadow-xl space-y-8">
+      {showConfetti && <Confetti numberOfPieces={200} />}
+      <h1 className="text-4xl font-extrabold text-center">Generate Recommendation Letter</h1>
+      <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
         <div
-          className="h-2 bg-blue-600 dark:bg-purple-500 transition-all"
+          className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 transition-all"
           style={{ width: `${getProgress()}%` }}
         />
       </div>
 
-      {!draft && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Step 1 */}
+      {!draft ? (
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Step 1: Letter Basics */}
           {currentStep === 1 && (
-            <div className="space-y-2">
-              <label className="block font-medium">1. Letter Type</label>
-              <select
-                name="letterType"
-                value={form.letterType}
-                onChange={handleChange}
-                className={inputClass}
-              >
-                <option value="academic">Academic (University Admission)</option>
-                <option value="graduate">Graduate School</option>
-                <option value="job">Job / Employment</option>
-                <option value="internship">Internship</option>
-                <option value="scholarship">Scholarship / Financial Aid</option>
-                <option value="immigration">Immigration / Visa</option>
-                <option value="medical">Medical Residency</option>
-                <option value="volunteer">Volunteer / NGO</option>
-                <option value="tenant">Tenant / Landlord Reference</option>
-                <option value="personal">Personal / Character Reference</option>
-              </select>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              {LETTER_TYPES.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, letterType: value }))}
+                  className={`p-5 border rounded-2xl text-center transform transition hover:scale-105 focus:outline-none ${
+                    form.letterType === value
+                      ? 'border-blue-600 bg-blue-50 dark:bg-gray-800'
+                      : 'border-gray-300 bg-white dark:bg-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* Step 2 */}
+          {/* Step 2: Recommender */}
           {currentStep === 2 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block font-medium">Recommender Name</label>
-                <input
-                  name="recName"
-                  placeholder="e.g. Jane Doe"
-                  value={form.recName}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Title / Position</label>
-                <input
-                  name="recTitle"
-                  placeholder="e.g. Senior Manager"
-                  value={form.recTitle}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Organization</label>
-                <input
-                  name="recOrg"
-                  placeholder="e.g. Acme Corp"
-                  value={form.recOrg}
-                  onChange={handleChange}
-                  className={inputClass}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {['recName','recTitle','recOrg'].map((field,i) => (
+                <div key={i}>
+                  <label htmlFor={field} className="block font-semibold mb-2">
+                    {field === 'recName' ? 'Recommender Name' : field === 'recTitle' ? 'Title / Position' : 'Organization'}
+                  </label>
+                  <input
+                    id={field}
+                    name={field}
+                    value={(form as any)[field]}
+                    onChange={handleChange}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              ))}
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block font-medium">Relationship</label>
+                  <label htmlFor="relationship" className="block font-semibold mb-2">Relationship</label>
                   <select
+                    id="relationship"
                     name="relationship"
                     value={form.relationship}
                     onChange={handleChange}
-                    className={inputClass}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   >
                     <option value="manager">Manager / Supervisor</option>
                     <option value="professor">Professor / Advisor</option>
@@ -248,12 +199,13 @@ export default function NewLetterPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block font-medium">Known Time</label>
+                  <label htmlFor="knownTime" className="block font-semibold mb-2">Known Time</label>
                   <select
+                    id="knownTime"
                     name="knownTime"
                     value={form.knownTime}
                     onChange={handleChange}
-                    className={inputClass}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   >
                     <option value="lt1">Less than 1 year</option>
                     <option value="btw1and3">1–3 years</option>
@@ -264,152 +216,139 @@ export default function NewLetterPage() {
             </div>
           )}
 
-          {/* Step 3 */}
+          {/* Step 3: Applicant */}
           {currentStep === 3 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="block font-medium">Applicant Name</label>
+                <label htmlFor="applicantName" className="block font-semibold mb-2">Applicant Name</label>
                 <input
+                  id="applicantName"
                   name="applicantName"
-                  placeholder="Full name of applicant"
                   value={form.applicantName}
                   onChange={handleChange}
-                  className={inputClass}
+                  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 />
               </div>
-              <div>
-                <label className="block font-medium">Achievements (optional)</label>
-                <textarea
-                  name="achievements"
-                  placeholder="One per line"
-                  value={form.achievements}
-                  onChange={handleChange}
-                  className={inputClass}
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Skills (optional)</label>
-                <textarea
-                  name="skills"
-                  placeholder="Comma separated"
-                  value={form.skills}
-                  onChange={handleChange}
-                  className={inputClass}
-                  rows={2}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Qualities (optional)</label>
-                <textarea
-                  name="qualities"
-                  placeholder="Describe qualities"
-                  value={form.qualities}
-                  onChange={handleChange}
-                  className={inputClass}
-                  rows={2}
-                />
-              </div>
+              {['achievements','skills','qualities'].map((field,i) => (
+                <div key={i}>
+                  <label htmlFor={field} className="block font-semibold mb-2 capitalize">
+                    {field.replace(/([A-Z])/g,' $1')}
+                  </label>
+                  <textarea
+                    id={field}
+                    name={field}
+                    rows={field==='achievements'?4:3}
+                    value={(form as any)[field]}
+                    onChange={handleChange}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400 placeholder-gray-500"
+                  />
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Step 4 */}
+          {/* Step 4: Recipient & Extras */}
           {currentStep === 4 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="block font-medium">Recipient Name (optional)</label>
+                <label htmlFor="recipientName" className="block font-semibold mb-2">Recipient Name (optional)</label>
                 <input
+                  id="recipientName"
                   name="recipientName"
-                  placeholder="Who receives this letter?"
                   value={form.recipientName}
                   onChange={handleChange}
-                  className={inputClass}
+                  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 />
               </div>
               <div>
-                <label className="block font-medium">Recipient Position (optional)</label>
+                <label htmlFor="recipientPosition" className="block font-semibold mb-2">Recipient Position (optional)</label>
                 <input
+                  id="recipientPosition"
                   name="recipientPosition"
-                  placeholder="Their title or role"
                   value={form.recipientPosition}
                   onChange={handleChange}
-                  className={inputClass}
+                  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 />
               </div>
-              {/* Conditional extras */}
               {['scholarship', 'graduate'].includes(form.letterType) && (
                 <div>
-                  <label className="block font-medium">Applicant GPA (optional)</label>
+                  <label htmlFor="gpa" className="block font-semibold mb-2">Applicant GPA (optional)</label>
                   <input
+                    id="gpa"
                     name="gpa"
-                    placeholder="e.g. 3.8/4.0"
                     value={form.gpa}
+                    placeholder="e.g. 3.8/4.0"
                     onChange={handleChange}
-                    className={inputClass}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
               )}
               {form.letterType === 'immigration' && (
                 <div>
-                  <label className="block font-medium">Visa Type</label>
+                  <label htmlFor="visaType" className="block font-semibold mb-2">Visa Type (optional)</label>
                   <input
+                    id="visaType"
                     name="visaType"
-                    placeholder="e.g. H-1B, O-1"
                     value={form.visaType}
+                    placeholder="e.g. H-1B, O-1"
                     onChange={handleChange}
-                    className={inputClass}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
               )}
               {form.letterType === 'tenant' && (
                 <div>
-                  <label className="block font-medium">Rental Address</label>
+                  <label htmlFor="rentalAddress" className="block font-semibold mb-2">Rental Address (optional)</label>
                   <input
+                    id="rentalAddress"
                     name="rentalAddress"
-                    placeholder="Property address"
                     value={form.rentalAddress}
+                    placeholder="Property address"
                     onChange={handleChange}
-                    className={inputClass}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
               )}
               {form.letterType === 'medical' && (
                 <div>
-                  <label className="block font-medium">Residency Specialty</label>
+                  <label htmlFor="residencySpecialty" className="block font-semibold mb-2">Residency Specialty (optional)</label>
                   <input
+                    id="residencySpecialty"
                     name="residencySpecialty"
-                    placeholder="e.g. Internal Medicine"
                     value={form.residencySpecialty}
+                    placeholder="e.g. Internal Medicine"
                     onChange={handleChange}
-                    className={inputClass}
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 5 */}
+          {/* Step 5: Tone & Language */}
           {currentStep === 5 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div>
-                <label className="block font-medium">Language</label>
+                <label htmlFor="language" className="block font-semibold mb-2">Language</label>
                 <select
+                  id="language"
                   name="language"
                   value={form.language}
                   onChange={handleChange}
-                  className={inputClass}
+                  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="english">English</option>
                   <option value="spanish">Spanish</option>
                 </select>
               </div>
               <div>
-                <label className="block font-medium">Formality</label>
+                <label htmlFor="formality" className="block font-semibold mb-2">Formality</label>
                 <select
+                  id="formality"
                   name="formality"
                   value={form.formality}
                   onChange={handleChange}
-                  className={inputClass}
+                  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="formal">Formal</option>
                   <option value="semiformal">Semi-formal</option>
@@ -417,12 +356,13 @@ export default function NewLetterPage() {
                 </select>
               </div>
               <div>
-                <label className="block font-medium">Tone</label>
+                <label htmlFor="tone" className="block font-semibold mb-2">Tone</label>
                 <select
+                  id="tone"
                   name="tone"
                   value={form.tone}
                   onChange={handleChange}
-                  className={inputClass}
+                  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 >
                   <option value="enthusiastic">Enthusiastic</option>
                   <option value="confident">Confident</option>
@@ -431,119 +371,81 @@ export default function NewLetterPage() {
                 </select>
               </div>
               <div>
-                <label className="block font-medium">Creativity Level</label>
-                <select
+                <label htmlFor="creativity" className="block font-semibold mb-2">Creativity Level</label>
+                <input
+                  id="creativity"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
                   name="creativity"
                   value={form.creativity}
                   onChange={handleChange}
-                  className={inputClass}
-                >
-                  <option value="0.2">Conservative</option>
-                  <option value="0.5">Balanced</option>
-                  <option value="0.8">Creative</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Step 6 */}
-          {currentStep === 6 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block font-medium">
-                  <input
-                    type="checkbox"
-                    name="addAnecdote"
-                    checked={form.addAnecdote}
-                    onChange={handleChange}
-                    className="mr-2"
-                  />
-                  Include a specific anecdote
-                </label>
-              </div>
-              <div>
-                <label className="block font-medium">
-                  <input
-                    type="checkbox"
-                    name="addMetrics"
-                    checked={form.addMetrics}
-                    onChange={handleChange}
-                    className="mr-2"
-                  />
-                  Include quantitative metrics
-                </label>
-              </div>
-              <div>
-                <label className="block font-medium">Additional Context (optional)</label>
-                <textarea
-                  name="context"
-                  placeholder="Any other details to include..."
-                  value={form.context}
-                  onChange={handleChange}
-                  className={inputClass}
-                  rows={3}
+                  className="w-full"
                 />
+                <div className="text-sm">Current: {form.creativity}</div>
+              </div>
+              <div className="flex justify-between space-x-4">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="flex-1 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                >
+                  Previous
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGenerating}
+                  className="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {isGenerating ? 'Generating...' : 'Generate Letter'}
+                </button>
               </div>
             </div>
           )}
 
-          {/* Navigation */}
-          <div className="flex justify-between pt-4">
-            <button
-              type="button"
-              onClick={handlePrev}
-              disabled={currentStep === 1}
-              className={`px-4 py-2 rounded ${
-                currentStep === 1
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-gray-600 hover:bg-gray-700'
-              } text-white`}
-            >
-              Previous
-            </button>
-            {currentStep < totalSteps ? (
+          {/* Navigation Buttons (except for last step) */}
+          {currentStep < 5 && (
+            <div className="flex justify-between space-x-4">
+              <button
+                type="button"
+                onClick={handlePrev}
+                disabled={currentStep === 1}
+                className="flex-1 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition disabled:opacity-50"
+              >
+                Previous
+              </button>
               <button
                 type="button"
                 onClick={handleNext}
-                disabled={!isCurrentStepComplete()}
-                className={`px-4 py-2 rounded ${
-                  !isCurrentStepComplete()
-                    ? 'bg-gray-300 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700'
-                } text-white`}
+                disabled={!isStepComplete()}
+                className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
               >
                 Next
               </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={isGenerating}
-                className={`px-4 py-2 rounded ${
-                  isGenerating
-                    ? 'bg-gray-300 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                } text-white`}
-              >
-                {isGenerating ? 'Generating...' : 'Generate Letter'}
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </form>
-      )}
-
-      {/* Generated Letter */}
-      {draft && (
-        <div className="space-y-4">
+      ) : (
+        <div className="space-y-6">
           <h2 className="text-2xl font-bold">Generated Letter</h2>
-          <div className="whitespace-pre-wrap p-4 bg-gray-100 dark:bg-gray-800 rounded">
+          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-800 rounded-lg" aria-live="polite">
             {draft}
           </div>
-          <button
-            onClick={() => setDraft('')}
-            className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
-          >
-            Generate Another
-          </button>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => navigator.clipboard.writeText(draft)}
+              className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Copy to Clipboard
+            </button>
+            <button
+              onClick={() => setDraft('')}
+              className="flex-1 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            >
+              Generate Another
+            </button>
+          </div>
         </div>
       )}
     </main>
