@@ -42,6 +42,9 @@ export default function NewLetterPage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [fileError, setFileError] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const KNOWN_TIMES: Record<string, string> = {
     lt1: 'less than 1 year',
@@ -88,8 +91,8 @@ export default function NewLetterPage() {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const { name, type, value, checked } = e.target as HTMLInputElement;
-    setForm((f) => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+    const { name, type, value } = e.target as HTMLInputElement;
+    setForm((f) => ({ ...f, [name]: value }));
   };
 
   const handleBlur = (
@@ -99,9 +102,53 @@ export default function NewLetterPage() {
     setTouched((t) => ({ ...t, [name]: true }));
   };
 
+  const validateFile = (file: File) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setFileError('Only PDF or DOCX files up to 5 MB are allowed.');
+      return false;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError('File size should be less than 5 MB.');
+      return false;
+    }
+    setFileError('');
+    return true;
+  };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setForm((f) => ({ ...f, file }));
+    if (file && validateFile(file)) {
+      setForm((f) => ({ ...f, file }));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files[0];
+    if (file && validateFile(file)) {
+      setForm((f) => ({ ...f, file }));
+    }
+  };
+
+  const handleFileRemove = () => {
+    setForm((f) => ({ ...f, file: null }));
+    setFileError('');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -127,7 +174,8 @@ export default function NewLetterPage() {
     frags.push(`Applicant: ${form.applicantName}.`);
     if (form.recipientName)
       frags.push(
-        `Recipient: ${form.recipientName}, position ${form.recipientPosition}.`
+        `Recipient: ${form.recipientName}, position ${form.recipientPosition}.
+      `
       );
     if (form.achievements) frags.push(`Highlight achievements: ${form.achievements}.`);
     if (form.skills) frags.push(`Include skills: ${form.skills}.`);
@@ -475,6 +523,7 @@ export default function NewLetterPage() {
           {/* Step 5: Tone & Generate */}
           {currentStep === 5 && (
             <div className="space-y-6">
+              {/* Language, Formality, Tone, Creativity */}
               <div>
                 <label htmlFor="language" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Language
@@ -490,6 +539,7 @@ export default function NewLetterPage() {
                   <option value="spanish">Spanish</option>
                 </select>
               </div>
+
               <div>
                 <label htmlFor="formality" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Formality
@@ -506,6 +556,7 @@ export default function NewLetterPage() {
                   <option value="casual">Casual</option>
                 </select>
               </div>
+
               <div>
                 <label htmlFor="tone" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Tone
@@ -523,6 +574,7 @@ export default function NewLetterPage() {
                   <option value="sincere">Sincere</option>
                 </select>
               </div>
+
               <div>
                 <label htmlFor="creativity" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Creativity Level
@@ -541,21 +593,45 @@ export default function NewLetterPage() {
                 <div className="text-sm">Current: {form.creativity}</div>
               </div>
 
-              {/* File Upload */}
+              {/* File Upload with drag-and-drop */}
               <div>
-                <label htmlFor="file" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                <label className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                   Upload Supporting Document (optional)
                 </label>
-                <input
-                  id="file"
-                  name="file"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.csv"
-                  onChange={handleFileChange}
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-400"
-                />
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition ${
+                    dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white dark:bg-gray-700'
+                  }`}
+                >
+                  {!form.file ? (
+                    <p className="text-gray-500 dark:text-gray-400">Drag & drop PDF/DOCX here, or click to browse</p>
+                  ) : (
+                    <div className="flex items-center space-x-4">
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {form.file.name} ({(form.file.size / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                      <button type="button" onClick={handleFileRemove} className="text-red-500 hover:underline">
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+                {fileError && <p className="text-red-500 text-sm mt-1">{fileError}</p>}
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  *Remember you get one free letter per month, if you need more, you can buy credits.
+                </p>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">*Remember you get one free letter per month, if you need more, you can buy credits. </p>
 
               {/* Navigation */}
               <div className="flex space-x-4">
@@ -577,7 +653,7 @@ export default function NewLetterPage() {
             </div>
           )}
 
-          {/* Navigation Buttons (except for last step) */}
+          {/* Navigation for steps 1-4 */}
           {currentStep < 5 && (
             <div className="flex justify-between space-x-4">
               <button
@@ -600,6 +676,7 @@ export default function NewLetterPage() {
           )}
         </form>
       ) : (
+        /* Draft view */
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">Generated Letter</h2>
           <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg">
