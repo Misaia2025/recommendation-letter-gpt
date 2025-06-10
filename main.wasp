@@ -212,7 +212,11 @@ api paymentsWebhook {
   httpRoute: (POST, "/payments-webhook")
 }
 //#endregion
-
+route NewLetterRoute { path: "/letter/new", to: NewLetterPage }
+page NewLetterPage {
+  authRequired: true,                         // ← comma here
+  component: import NewLetterPage from "@src/letter/NewLetterPage"
+}
 //#region File Upload
 route FileUploadRoute { path: "/file-upload", to: FileUploadPage }
 page FileUploadPage {

@@ -17,7 +17,7 @@ export default function Hero() {
             </p>
             <div className='mt-10 flex items-center justify-center gap-x-6'>
               <a
-                href={DocsUrl}
+                href="/letter/new"
                 className='rounded-md px-3.5 py-2.5 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-200 hover:ring-2 hover:ring-yellow-300 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:text-white'
               >
                 Get Started <span aria-hidden='true'>→</span>
