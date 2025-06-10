@@ -55,8 +55,8 @@ export default function AppNavBar({ navigationItems }: { navigationItems: Naviga
             <HiBars3 className='h-6 w-6' aria-hidden='true' />
           </button>
         </div>
-        <div className='hidden lg:flex lg:gap-x-12'>{renderNavigationItems(navigationItems)}</div>
-        <div className='hidden lg:flex lg:flex-1 gap-3 justify-end items-center'>
+        <div className='hidden lg:flex lg:gap-x-6 order-2 lg:mr-8'>{renderNavigationItems(navigationItems)}</div>
+        <div className='hidden lg:flex order-3 gap-3 justify-end items-center'>
           <ul className='flex justify-center items-center gap-2 sm:gap-4'>
             <DarkModeSwitcher />
           </ul>
