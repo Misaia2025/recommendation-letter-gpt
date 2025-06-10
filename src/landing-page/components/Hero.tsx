@@ -16,12 +16,15 @@ export default function Hero() {
             No templates. No stress. Just smart letters.
             </p>
             <div className='mt-10 flex items-center justify-center gap-x-6'>
-              <a
-                href="/letter/new"
-                className='rounded-md px-3.5 py-2.5 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-200 hover:ring-2 hover:ring-yellow-300 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:text-white'
+            <a
+             href="/letter/new"
+              className='mt-8 inline-block rounded-xl px-6 py-3 text-base font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 shadow-md transition-transform duration-200 hover:scale-105 hover:shadow-lg bg-white dark:bg-white/10 dark:text-white dark:ring-white/20 backdrop-blur-md
+             sm:px-8 sm:py-4 sm:text-lg
+             md:px-10 md:py-5 md:text-xl'
               >
-                Get Started <span aria-hidden='true'>→</span>
-              </a>
+             Get Started <span aria-hidden='true'>→</span>
+             </a>
+
             </div>
           </div>
           <div className='mt-14 flow-root sm:mt-14'>
