@@ -3,34 +3,27 @@ import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse } from 'wasp/client/operations';
 
 export default function NewLetterPage() {
-  // Detectamos si el usuario está logueado o no
   const { data: user } = useAuth();
   const isGuest = !user;
 
-  // Estado del formulario con Fases 1–5
   const [form, setForm] = useState({
-    // Fase 2 · Info del recomendador
     recName: '',
     recTitle: '',
     recOrg: '',
     relationship: 'manager',
     knownTime: '<1yr',
-    // Fase 1 · Tipo de carta
     letterType: 'academic',
-    // Fase 3 · Info del recomendado
     applicant: '',
     targetName: '',
     targetPosition: '',
     achievements: '',
     skills: '',
     qualities: '',
-    // Fase 4 · Tono y estilo
     context: '',
     language: 'english',
     formality: 'formal',
     tone: 'enthusiastic',
     creativity: '0.5',
-    // Fase 5 · Opciones avanzadas
     addAnecdote: false,
     addMetrics: false,
     addressedTo: '',
@@ -49,14 +42,11 @@ export default function NewLetterPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    // Invitado: 1 uso gratis
     if (isGuest && localStorage.getItem('guestUsed')) {
       window.location.href = '/login';
       return;
     }
 
-    // Construir prompt con todos los campos
     let prompt = `Write a ${form.letterType} recommendation letter in ${
       form.language === 'spanish' ? 'Spanish' : 'English'
     }.`;
@@ -74,8 +64,7 @@ export default function NewLetterPage() {
     if (form.qualities) {
       prompt += ` Emphasize personal qualities: ${form.qualities}.`;
     }
-    prompt += ` Use a ${form.formality} and ${form.tone} tone.`;
-    prompt += ` Creativity level: ${form.creativity}.`;
+    prompt += ` Use a ${form.formality} and ${form.tone} tone. Creativity level: ${form.creativity}.`;
     if (form.addAnecdote) {
       prompt += ` Include a specific anecdote for illustration.`;
     }
@@ -91,8 +80,7 @@ export default function NewLetterPage() {
 
     try {
       const rawRes: any = await (generateGptResponse as any)({ prompt } as any);
-      const text = rawRes.text ?? '';
-      setDraft(text);
+      setDraft(rawRes.text ?? '');
       if (isGuest) {
         localStorage.setItem('guestUsed', '1');
       }
@@ -106,16 +94,22 @@ export default function NewLetterPage() {
     }
   };
 
+  const inputClass =
+    "w-full rounded px-3 py-2 border border-gray-300 bg-white text-gray-900 placeholder-gray-500 " +
+    "dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400";
+
   return (
-    <main className="mx-auto max-w-xl py-20 px-6 space-y-6">
-      <h1 className="text-3xl font-bold">Generate Recommendation Letter</h1>
+    <main className="mx-auto max-w-xl py-20 px-6 space-y-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        Generate Recommendation Letter
+      </h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Fase 1 · Tipo de carta */}
         <select
           name="letterType"
           value={form.letterType}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="academic">Academic (university admission)</option>
           <option value="job">Job / Employment</option>
@@ -133,27 +127,27 @@ export default function NewLetterPage() {
           placeholder="Your full name"
           value={form.recName}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
         <input
           name="recTitle"
           placeholder="Your title / position"
           value={form.recTitle}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
         <input
           name="recOrg"
           placeholder="Your organization / company"
           value={form.recOrg}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
         <select
           name="relationship"
           value={form.relationship}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="manager">Manager</option>
           <option value="professor">Professor</option>
@@ -164,7 +158,7 @@ export default function NewLetterPage() {
           name="knownTime"
           value={form.knownTime}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="<1yr">Less than 1 yr</option>
           <option value="1-3yr">1–3 yrs</option>
@@ -177,28 +171,28 @@ export default function NewLetterPage() {
           placeholder="Applicant name"
           value={form.applicant}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
         <input
           name="targetName"
           placeholder="Target recipient name"
           value={form.targetName}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
         <input
           name="targetPosition"
           placeholder="Target recipient position"
           value={form.targetPosition}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
         <textarea
           name="achievements"
           placeholder="Key achievements (one per line)"
           value={form.achievements}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
           rows={3}
         />
         <textarea
@@ -206,7 +200,7 @@ export default function NewLetterPage() {
           placeholder="Key skills (comma separated)"
           value={form.skills}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
           rows={2}
         />
         <textarea
@@ -214,7 +208,7 @@ export default function NewLetterPage() {
           placeholder="Personal qualities"
           value={form.qualities}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
           rows={2}
         />
 
@@ -223,7 +217,7 @@ export default function NewLetterPage() {
           name="context"
           value={form.context}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="">Additional context (optional)</option>
           <option value="context1">Context 1</option>
@@ -233,7 +227,7 @@ export default function NewLetterPage() {
           name="language"
           value={form.language}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="english">English</option>
           <option value="spanish">Español</option>
@@ -242,7 +236,7 @@ export default function NewLetterPage() {
           name="formality"
           value={form.formality}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="formal">Formal</option>
           <option value="semi-formal">Semi-formal</option>
@@ -252,7 +246,7 @@ export default function NewLetterPage() {
           name="tone"
           value={form.tone}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         >
           <option value="enthusiastic">Enthusiastic</option>
           <option value="objective">Objective</option>
@@ -261,7 +255,9 @@ export default function NewLetterPage() {
           <option value="corporate">Corporate</option>
         </select>
         <div>
-          <label className="block mb-1">Creativity: {form.creativity}</label>
+          <label className="block mb-1 text-gray-700 dark:text-gray-300">
+            Creativity: {form.creativity}
+          </label>
           <input
             type="range"
             name="creativity"
@@ -270,26 +266,28 @@ export default function NewLetterPage() {
             step="0.1"
             value={form.creativity}
             onChange={handleChange}
-            className="w-full"
+            className="w-full accent-purple-600 dark:accent-purple-400"
           />
         </div>
 
         {/* Fase 5 · Opciones avanzadas */}
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           <input
             type="checkbox"
             name="addAnecdote"
             checked={form.addAnecdote}
             onChange={handleChange}
+            className="accent-purple-600 dark:accent-purple-400"
           />
           Include a specific anecdote
         </label>
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
           <input
             type="checkbox"
             name="addMetrics"
             checked={form.addMetrics}
             onChange={handleChange}
+            className="accent-purple-600 dark:accent-purple-400"
           />
           Include quantitative metrics
         </label>
@@ -298,12 +296,13 @@ export default function NewLetterPage() {
           placeholder="Address to (e.g. Dr. Smith)"
           value={form.addressedTo}
           onChange={handleChange}
-          className="w-full border rounded px-3 py-2"
+          className={inputClass}
         />
 
         <button
           type="submit"
-          className="w-full rounded bg-[#5B2D90] hover:bg-[#8B5E3C] text-white py-3 font-semibold"
+          className="w-full rounded bg-[#5B2D90] hover:bg-[#8B5E3C] text-white py-3 font-semibold
+                     dark:bg-purple-600 dark:hover:bg-purple-700"
         >
           Generate
         </button>
@@ -311,9 +310,10 @@ export default function NewLetterPage() {
 
       {draft && (
         <textarea
-          className="mt-10 w-full h-64 border rounded p-4"
-          value={draft}
           readOnly
+          value={draft}
+          className="mt-10 w-full h-64 rounded p-4 border border-gray-300 bg-white text-gray-900
+                     dark:border-gray-600 dark:bg-gray-800 dark:text-white"
         />
       )}
     </main>
