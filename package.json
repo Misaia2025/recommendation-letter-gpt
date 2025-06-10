@@ -1,5 +1,5 @@
 {
-  "name": "opensaas",
+  "name": "Recommendation Letter GPT",
   "type": "module",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.523.0",

@@ -12,8 +12,8 @@ app OpenSaaS {
     "<meta name='keywords' content='saas, solution, product, app, service' />",
     
     "<meta property='og:type' content='website' />",
-    "<meta property='og:title' content='Your Open SaaS App' />",
-    "<meta property='og:site_name' content='Your Open SaaS App' />",
+    "<meta property='og:title' content='Recommendation Letter GPT' />",
+    "<meta property='og:site_name' content='Recommendation Letter GPT' />",
     "<meta property='og:url' content='https://your-saas-app.com' />",
     "<meta property='og:description' content='Your apps main description and features.' />",
     "<meta property='og:image' content='https://your-saas-app.com/public-banner.webp' />",
