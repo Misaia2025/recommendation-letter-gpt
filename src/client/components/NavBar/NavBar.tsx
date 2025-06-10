@@ -6,7 +6,7 @@ import { Dialog } from '@headlessui/react';
 import { BiLogIn } from 'react-icons/bi';
 import { AiFillCloseCircle } from 'react-icons/ai';
 import { HiBars3 } from 'react-icons/hi2';
-import logo from '../../static/logo.webp';
+// import logo from '../../static/logo.webp';
 import DropdownUser from '../../../user/DropdownUser';
 import { UserMenuItems } from '../../../user/UserMenuItems';
 import DarkModeSwitcher from '../DarkModeSwitcher';
@@ -18,7 +18,7 @@ export interface NavigationItem {
   to: string;
 }
 
-const NavLogo = () => <img className='h-8 w-8' src={logo} alt='Recommendation Letter GPT' />;
+const NavLogo = () => <img className='h-8 w-8' src='/logo.svg' alt='Recommendation Letter GPT' />;
 
 export default function AppNavBar({ navigationItems }: { navigationItems: NavigationItem[] }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

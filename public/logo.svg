@@ -1,0 +1,9 @@
+<!-- 32 × 32 academic envelope icon -->
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="#F1C40F">
+  <!-- envelope -->
+  <rect x="4" y="10" width="24" height="14" rx="2" />
+  <polyline points="4 12 16 21 28 12" fill="#FFFFFF" />
+  <!-- mortarboard -->
+  <polygon points="16 4 7 8 16 12 25 8" fill="#F1C40F" />
+  <rect x="15" y="12" width="2" height="4" fill="#F1C40F" />
+</svg>
