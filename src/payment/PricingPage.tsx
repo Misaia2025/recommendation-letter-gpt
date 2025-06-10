@@ -37,6 +37,9 @@ export const paymentPlanCards: Record<PaymentPlanId, PaymentPlanCard> = {
 };
 
 const PricingPage = () => {
+  const params = new URLSearchParams(window.location.search);
+  const noCredits = params.get('credits') === '0';
+
   const [isPaymentLoading, setIsPaymentLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -101,6 +104,12 @@ const PricingPage = () => {
     <div className='py-10 lg:mt-10'>
       <div className='mx-auto max-w-7xl px-6 lg:px-8'>
         <div id='pricing' className='mx-auto max-w-4xl text-center'>
+          {/* Banner cuando el usuario se quedó sin créditos */}
+{noCredits && (
+  <div className='mb-6 rounded bg-yellow-100 border border-yellow-300 p-4 text-sm text-yellow-800'>
+    You’ve used your free letter. Choose a plan below to keep generating recommendations.
+  </div>
+)}
           <h2 className='mt-2 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl dark:text-white'>
             Pick your <span className='text-yellow-500'>pricing</span>
           </h2>
@@ -213,3 +222,6 @@ const PricingPage = () => {
 };
 
 export default PricingPage;
+ // Detect query ?credits=0
+ const params = new URLSearchParams(window.location.search);
+ const noCredits = params.get('credits') === '0';

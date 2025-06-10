@@ -22,7 +22,7 @@ export const UserMenuItems = ({ user, setMobileMenuOpen }: { user?: Partial<User
           'px-6': path === adminDashboardPath,
         })}
       >
-        {path === landingPagePath || path === adminDashboardPath ? (
+        {/* {path === landingPagePath || path === adminDashboardPath ? (
           <li>
             <WaspRouterLink
               to={routes.DemoAppRoute.to}
@@ -32,7 +32,7 @@ export const UserMenuItems = ({ user, setMobileMenuOpen }: { user?: Partial<User
               AI Scheduler (Demo App)
             </WaspRouterLink>
           </li>
-        ) : null}
+        ) : null} */}
         <li>
           <WaspRouterLink
             to={routes.AccountRoute.to}
