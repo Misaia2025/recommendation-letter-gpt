@@ -1,13 +1,16 @@
 import { type Task } from 'wasp/entities';
 
 import {
+  createTask,
+  getAllTasksByUser,
   generateGptResponse,
   deleteTask,
   updateTask,
-  createTask,
   useQuery,
-  getAllTasksByUser,
 } from 'wasp/client/operations';
+
+
+
 
 import { useState, useMemo } from 'react';
 import { CgSpinner } from 'react-icons/cg';
@@ -43,69 +46,7 @@ export default function DemoAppPage() {
 function NewTaskForm({ handleCreateTask }: { handleCreateTask: typeof createTask }) {
   const [description, setDescription] = useState<string>('');
   const [todaysHours, setTodaysHours] = useState<string>('8');
-  const [response, setResponse] = useState<GeneratedSchedule | null>({
-    mainTasks: [
-      {
-        name: 'Respond to emails',
-        priority: 'high',
-      },
-      {
-        name: 'Learn WASP',
-        priority: 'low',
-      },
-      {
-        name: 'Read a book',
-        priority: 'medium',
-      },
-    ],
-    subtasks: [
-      {
-        description: 'Read introduction and chapter 1',
-        time: 0.5,
-        mainTaskName: 'Read a book',
-      },
-      {
-        description: 'Read chapter 2 and take notes',
-        time: 0.3,
-        mainTaskName: 'Read a book',
-      },
-      {
-        description: 'Read chapter 3 and summarize key points',
-        time: 0.2,
-        mainTaskName: 'Read a book',
-      },
-      {
-        description: 'Check and respond to important emails',
-        time: 1,
-        mainTaskName: 'Respond to emails',
-      },
-      {
-        description: 'Organize and prioritize remaining emails',
-        time: 0.5,
-        mainTaskName: 'Respond to emails',
-      },
-      {
-        description: 'Draft responses to urgent emails',
-        time: 0.5,
-        mainTaskName: 'Respond to emails',
-      },
-      {
-        description: 'Watch tutorial video on WASP',
-        time: 0.5,
-        mainTaskName: 'Learn WASP',
-      },
-      {
-        description: 'Complete online quiz on the basics of WASP',
-        time: 1.5,
-        mainTaskName: 'Learn WASP',
-      },
-      {
-        description: 'Review quiz answers and clarify doubts',
-        time: 1,
-        mainTaskName: 'Learn WASP',
-      },
-    ],
-  });
+  const [response, setResponse] = useState<GeneratedSchedule | null>(null);
   const [isPlanGenerating, setIsPlanGenerating] = useState<boolean>(false);
 
   const { data: tasks, isLoading: isTasksLoading } = useQuery(getAllTasksByUser);
@@ -120,19 +61,27 @@ function NewTaskForm({ handleCreateTask }: { handleCreateTask: typeof createTask
   };
 
   const handleGeneratePlan = async () => {
-    try {
-      setIsPlanGenerating(true);
-      const response = await generateGptResponse({
-        hours: todaysHours,
-      });
-      if (response) {
-        setResponse(response);
-      }
-    } catch (err: any) {
-      window.alert('Error: ' + (err.message || 'Something went wrong'));
-    } finally {
-      setIsPlanGenerating(false);
-    }
+  try {
+    setIsPlanGenerating(true);
+
+    // 2.1) Construir un prompt claro con horas y tareas
+    const prompt = `I will work ${todaysHours} hours today. Here are the tasks I have to complete: ${JSON.stringify(
+      tasks
+    )}. Please help me plan my day by breaking tasks into actionable subtasks with time and priority, and reply with a JSON matching the GeneratedSchedule schema.`;
+
+    // 2.2) Invocar la acción con { prompt }
+    const res = await generateGptResponse({ prompt });
+
+    // 2.3) Parsear el texto JSON a nuestro tipo
+    const schedule: GeneratedSchedule = JSON.parse(res.text);
+
+    // 2.4) Guardar en el estado
+    setResponse(schedule);
+  } catch (err: any) {
+    window.alert('Error: ' + (err.message || 'Something went wrong'));
+  } finally {
+    setIsPlanGenerating(false);
+  }
   };
 
   return (

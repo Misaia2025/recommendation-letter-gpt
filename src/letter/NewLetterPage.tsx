@@ -1,7 +1,11 @@
 import React, { useState, useRef, ChangeEvent, FormEvent, useEffect, FocusEvent } from 'react';
 import { useAuth } from 'wasp/client/auth';
-import { generateGptResponse } from 'wasp/client/operations';
+import { generateGptResponse, createFile } from 'wasp/client/operations';
 import Confetti from 'react-confetti';
+
+// VARIABLES DE ENTORNO PARA S3
+const S3_BUCKET = import.meta.env.VITE_S3_BUCKET as string
+const S3_REGION = import.meta.env.VITE_S3_REGION as string
 
 // Letter type options for Step 1
 const LETTER_TYPES = [
@@ -150,16 +154,55 @@ export default function NewLetterPage() {
     setForm((f) => ({ ...f, file: null }));
     setFileError('');
   };
+  // por encima de handleSubmit
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    // Si es guest y ya usó su free letter:
     if (isGuest && localStorage.getItem('guestUsed')) {
       window.location.href = '/login';
       return;
     }
+  
     setErrorMsg('');
+    setFileError('');
     setIsGenerating(true);
+  
+    let fileKey: string | undefined;
+    // 1) Subir archivo si existe
+    if (form.file) {
+      try {
+        // 1.1) Pedir URL firmada /// AQUIIIIII
+        // 1.1) Pedir URL firmada (con los nombres correctos)
+const { s3UploadUrl, s3UploadFields } = await createFile({
+  fileName: form.file.name,
+  // casteo para ajustarse al union type de TS
+  fileType: form.file.type as any,
+});
 
+// 1.2) Construir FormData y subir a S3
+const data = new FormData();
+Object.entries(s3UploadFields).forEach(([k, v]) => data.append(k, v));
+data.append('file', form.file);
+const uploadRes = await fetch(s3UploadUrl, {
+  method: 'POST',
+  body: data,
+});
+if (!uploadRes.ok) throw new Error('Upload failed');
+
+// 1.3) Guardar la key para usarla en el prompt
+fileKey = s3UploadFields.key;
+        // opcional: si usas setUploadPct, podrías implementarlo con XHR
+        //// AQUIIII
+      } catch (err) {
+        console.error(err);
+        setFileError('Error uploading file. Please try again.');
+        setIsGenerating(false);
+        return;
+      }
+    }
+  
+    // 2) Construir prompt
     const frags: string[] = [];
     frags.push(
       `Write a ${form.letterType} recommendation letter in ${
@@ -172,27 +215,20 @@ export default function NewLetterPage() {
       }.`
     );
     frags.push(`Applicant: ${form.applicantName}.`);
-    if (form.recipientName)
+    // ... mantén el resto de frags igual que antes ...
+    // Si quisieras incluir enlace al doc:
+    if (fileKey) {
       frags.push(
-        `Recipient: ${form.recipientName}, position ${form.recipientPosition}.
-      `
+        `Supporting document: https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${fileKey}`
       );
-    if (form.achievements) frags.push(`Highlight achievements: ${form.achievements}.`);
-    if (form.skills) frags.push(`Include skills: ${form.skills}.`);
-    if (form.qualities) frags.push(`Emphasize qualities: ${form.qualities}.`);
-    if (['scholarship', 'graduate'].includes(form.letterType) && form.gpa)
-      frags.push(`Applicant GPA: ${form.gpa}.`);
-    if (form.letterType === 'immigration' && form.visaType)
-      frags.push(`Visa type: ${form.visaType}.`);
-    if (form.letterType === 'tenant' && form.rentalAddress)
-      frags.push(`Rental property: ${form.rentalAddress}.`);
-    if (form.letterType === 'medical' && form.residencySpecialty)
-      frags.push(`Residency specialty: ${form.residencySpecialty}.`);
+    }
     frags.push(`Use a ${form.formality} and ${form.tone} tone. Creativity level: ${form.creativity}.`);
-
+  
     const prompt = frags.join(' ');
+  
+    // 3) Invocar GPT
     try {
-      const res: any = await (generateGptResponse as any)({ prompt } as any);
+      const res: any = await generateGptResponse({ prompt });
       setDraft(res.text || '');
       if (isGuest) localStorage.setItem('guestUsed', '1');
       setShowConfetti(true);
@@ -207,6 +243,7 @@ export default function NewLetterPage() {
       scrollToTop();
     }
   };
+  
 
   useEffect(() => {
     if (showConfetti) {
