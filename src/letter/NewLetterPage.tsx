@@ -1038,7 +1038,8 @@ const handleDownloadDocx = async () => {
           </div>
 
 
-          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg text-justify max-w-prose mx-auto">
+          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg text-justify w-full">
+
             {draft}
           </div>
           <div className="flex space-x-4">
