@@ -741,210 +741,239 @@
 
                 {/* STEP 5 – ✨ REBUILT */}
                 {currentStep === 5 && (
-                  <div className="space-y-8">
-    
-                    {/* --- 1 · Essentials ------------------------------------------------ */}
-                    <div className="grid gap-8 md:grid-cols-2">
-                      {/* Language */}
-                      <div>
-                        <label className="font-semibold block mb-2">Language</label>
-                        <select name="language" value={form.language} onChange={handleChange}
-                                className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3">
-                          <option value="english">English</option>
-                          <option value="spanish">Spanish</option>
-                          <option value="french">French</option>
-                          <option value="german">German</option>
-                          <option value="portuguese">Portuguese</option>
-                        </select>
-                      </div>
-    
-                      {/* Formality slider (0-2) */}
-                      <div>
-                        <label className="font-semibold block mb-2">Formality</label>
-                        <input type="range" min={0} max={2} step={1} name="formality"
-                               value={form.formality} onChange={handleChange} className="w-full" />
-                        <p className="text-sm mt-1">
-                          {['Casual','Neutral','Formal'][form.formality]}
-                        </p>
-                      </div>
-    
-                      {/* Tone preset Listbox */}
-                      <div className="md:col-span-2">
-                        <label className="font-semibold block mb-2">Tone preset</label>
-                        <Listbox value={form.tonePreset}
-                                 onChange={v=>setForm(f=>({...f,tonePreset:v}))}>
-                          <div className="relative">
-                            <Listbox.Button
-                              className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3 text-left">
-                              {form.tonePreset}
-                            </Listbox.Button>
-                            <Listbox.Options
-                              className="absolute z-20 mt-1 max-h-60 w-full overflow-auto
-                                         rounded-md bg-white dark:bg-gray-800 shadow-lg">
-                              {TONE_PRESETS.map(tp=>(
-                                <Listbox.Option key={tp} value={tp}
-                                  className={({active})=>`px-4 py-2 cursor-pointer
-                                    ${active?'bg-blue-100 dark:bg-blue-900':''}`}>
-                                  {tp}
-                                </Listbox.Option>))}
-                            </Listbox.Options>
-                          </div>
-                        </Listbox>
-                      </div>
-    
-                      {/* Length slider */}
-                      <div className="md:col-span-2">
-                        <label className="font-semibold block mb-2">Length (words)</label>
-                        <input type="range" min={MIN_LEN} max={MAX_LEN} step={STEP_LEN}
-                               name="lengthWords" value={form.lengthWords} onChange={handleChange}
-                               className="w-full" />
-                        <p className="text-sm mt-1">{form.lengthWords} words target</p>
-                      </div>
-                    </div>
-    
-                    {/* --- 2 · Narrative style ----------------------------------------- */}
-                    <div className="grid gap-8 md:grid-cols-2">
-                      {/* Anecdote toggle */}
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">Include anecdote</span>
-                        <Switch
-                          checked={form.includeAnecdote}
-                          onChange={()=>toggleBoolean('includeAnecdote')}
-                          className={`${form.includeAnecdote?'bg-blue-600':'bg-gray-400'}
-                                     relative inline-flex h-6 w-11 items-center rounded-full`}>
-                          <span
-                            className={`inline-block h-4 w-4 rounded-full bg-white transition
-                                      ${form.includeAnecdote ? 'translate-x-6' : 'translate-x-1'}`}
-/>
+                          <div className="space-y-8">
 
-                        </Switch>
-                      </div>
-    
-                      {/* Metrics checkbox */}
-                      <div className="flex items-center space-x-3">
-                        <input id="includeMetrics" type="checkbox"
-                               checked={form.includeMetrics}
-                               onChange={()=>toggleBoolean('includeMetrics')}
-                               className="h-4 w-4 text-blue-600" />
-                        <label htmlFor="includeMetrics" className="font-semibold">
-                          Use metrics / numbers
-                        </label>
-                      </div>
-    
-                      {/* Opening style segmented */}
-                      <div className="md:col-span-2">
-                        <label className="font-semibold block mb-2">Opening style</label>
-                        <div className="flex flex-wrap gap-2">
-                          {OPENING_STYLES.map(os=>(
-                            <button key={os} type="button"
-                              className={`px-3 py-1 rounded-full border
-                                ${form.openingStyle===os
-                                    ?'bg-blue-600 text-white':'bg-gray-100 dark:bg-gray-700'}`}
-                              onClick={()=>setForm(f=>({...f,openingStyle:os}))}>
-                              {os}
-                            </button>))}
-                        </div>
-                      </div>
-                    </div>
-    
-                    {/* --- 3 · Voice ----------------------------------------------------- */}
-                    <div className="grid gap-6">
-                      {/* Perspective radio */}
-                      <fieldset>
-                        <legend className="font-semibold mb-2">Perspective</legend>
-                        <div className="space-y-2">
-                          {PERSPECTIVES.map(p=>(
-                            <label key={p.id} className="flex items-center space-x-3">
-                              <input type="radio" name="perspective" value={p.id}
-                                     checked={form.perspective===p.id}
-                                     onChange={handleChange} />
-                              <span>{p.label}</span>
-                            </label>))}
-                        </div>
-                      </fieldset>
-    
-                      {/* Style tags chips */}
-                      <div>
-                        <label className="font-semibold block mb-2">Writing style</label>
-                        <div className="flex flex-wrap gap-2">
-                          {WRITING_STYLE_TAGS.map(tag=>(
-                            <button key={tag} type="button"
-                              onClick={()=>toggleStyleTag(tag)}
-                              className={`px-3 py-1 rounded-full border
-                                ${form.styleTags.includes(tag)
-                                  ?'bg-green-600 text-white':'bg-gray-100 dark:bg-gray-700'}`}>
-                              {tag}
-                            </button>))}
-                        </div>
-                      </div>
-                    </div>
-    
-                    {/* --- 4 · Creativity & proofread ----------------------------------- */}
-                    <div className="grid gap-8 md:grid-cols-2">
-                      <div>
-                        <label className="font-semibold block mb-2">Creativity (temperature)</label>
-                        <input type="range" min={0} max={1} step={0.1} name="creativity"
-                               value={form.creativity} onChange={handleChange} className="w-full" />
-                        <p className="text-sm mt-1">Current: {form.creativity}</p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">Grammar-check pass</span>
-                        <Switch checked={form.grammarCheck}
-                                onChange={()=>toggleBoolean('grammarCheck')}
-                                className={`${form.grammarCheck?'bg-blue-600':'bg-gray-400'}
+                            {/* 1 · Top Section: Language & Tone */}
+                            <div className="grid gap-8 md:grid-cols-2">
+                              {/* Language */}
+                              <div>
+                                <label className="font-semibold block mb-2">Language</label>
+                                <select name="language" value={form.language} onChange={handleChange}
+                                        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3">
+                                  <option value="english">English</option>
+                                  <option value="spanish">Spanish</option>
+                                  <option value="french">French</option>
+                                  <option value="german">German</option>
+                                  <option value="portuguese">Portuguese</option>
+                                </select>
+                              </div>
+                              {/* Tone preset */}
+                              <div>
+                                <label className="font-semibold block mb-2">Tone preset</label>
+                                <Listbox value={form.tonePreset} onChange={v => setForm(f => ({ ...f, tonePreset: v }))}>
+                                  <div className="relative">
+                                    <Listbox.Button className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3 text-left">
+                                      {form.tonePreset}
+                                    </Listbox.Button>
+                                    <Listbox.Options className="absolute z-20 mt-1 max-h-60 w-full overflow-auto
+                                                      rounded-md bg-white dark:bg-gray-800 shadow-lg">
+                                      {TONE_PRESETS.map(tp => (
+                                        <Listbox.Option key={tp} value={tp}
+                                          className={({ active }) => `px-4 py-2 cursor-pointer
+                                            ${active ? 'bg-blue-100 dark:bg-blue-900' : ''}`}>
+                                          {tp}
+                                        </Listbox.Option>
+                                      ))}
+                                    </Listbox.Options>
+                                  </div>
+                                </Listbox>
+                              </div>
+                            </div>
+
+                            {/* 2 · Length */}
+                            <div>
+                              <label className="font-semibold block mb-2">Length (words)</label>
+                              <input type="range" min={MIN_LEN} max={MAX_LEN} step={STEP_LEN}
+                                    name="lengthWords" value={form.lengthWords} onChange={handleChange}
+                                    className="w-full" />
+                              <p className="text-sm mt-1">{form.lengthWords} words target</p>
+                            </div>
+
+                            {/* 3 · Opening Style & Formality */}
+                            <div className="grid gap-8 md:grid-cols-2">
+                              {/* Opening style */}
+                              <div>
+                                <label className="font-semibold block mb-2">Opening style</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {OPENING_STYLES.map(os => (
+                                    <button key={os} type="button"
+                                      className={`px-3 py-1 rounded-full border
+                                        ${form.openingStyle === os
+                                          ? 'bg-blue-600 text-white'
+                                          : 'bg-gray-100 dark:bg-gray-700'}`}
+                                      onClick={() => setForm(f => ({ ...f, openingStyle: os }))}>
+                                      {os}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* Formality pills */}
+                              <div>
+                                <label className="font-semibold block mb-2">Formality</label>
+                                <div className="flex flex-wrap gap-2">
+                                {['Casual', 'Neutral', 'Formal'].map((lvl, idx) => (
+                                  <button
+                                    key={lvl}
+                                    type="button"
+                                    className={`px-4 py-2 rounded-lg border font-medium transition
+                                              ${form.formality === idx
+                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}
+                                            `}
+                                    onClick={() =>
+                                      setForm(f => ({
+                                        ...f,
+                                        // Aquí casteamos idx a 0 | 1 | 2
+                                        formality: idx as 0 | 1 | 2
+                                      }))
+                                    }
+                                  >
+                                    {lvl}
+                                  </button>
+                                ))}
+
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 4 · Voice Row: Perspective & Toggles */}
+                            <div className="grid gap-8 md:grid-cols-2">
+                              {/* Perspective */}
+                              <fieldset>
+                                <legend className="font-semibold mb-2">Perspective</legend>
+                                <div className="space-y-2">
+                                  {PERSPECTIVES.map(p => (
+                                    <label key={p.id} className="flex items-center space-x-3">
+                                      <input type="radio" name="perspective" value={p.id}
+                                        checked={form.perspective === p.id}
+                                        onChange={handleChange} />
+                                      <span>{p.label}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </fieldset>
+                              {/* Toggles */}
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold">Include anecdote</span>
+                                  <Switch checked={form.includeAnecdote} onChange={() => toggleBoolean('includeAnecdote')}
+                                    className={`${form.includeAnecdote ? 'bg-blue-600' : 'bg-gray-400'}
                                             relative inline-flex h-6 w-11 items-center rounded-full`}>
-                          <span
-                                className={`inline-block h-4 w-4 rounded-full bg-white transition
-                                            ${form.grammarCheck ? 'translate-x-6' : 'translate-x-1'}`}
+                                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition
+                                      ${form.includeAnecdote ? 'translate-x-6' : 'translate-x-1'}`} />
+                                  </Switch>
+                                </div>
+                                <p className="text-sm text-gray-500">Adds a short personal anecdote.</p>
+
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold">Use metrics / numbers</span>
+                                  <Switch checked={form.includeMetrics} onChange={() => toggleBoolean('includeMetrics')}
+                                    className={`${form.includeMetrics ? 'bg-blue-600' : 'bg-gray-400'}
+                                            relative inline-flex h-6 w-11 items-center rounded-full`}>
+                                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition
+                                      ${form.includeMetrics ? 'translate-x-6' : 'translate-x-1'}`} />
+                                  </Switch>
+                                </div>
+                                <p className="text-sm text-gray-500">Highlights quantifiable achievements.</p>
+                              </div>
+                            </div>
+
+                            {/* 5 · Writing style & Grammar-check */}
+                            <div className="grid gap-8 md:grid-cols-2">
+                              {/* Writing style chips */}
+                              <div>
+                                <label className="font-semibold block mb-2">Writing style</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {WRITING_STYLE_TAGS.map(tag => (
+                                    <button key={tag} type="button"
+                                      onClick={() => toggleStyleTag(tag)}
+                                      className={`px-3 py-1 rounded-md border
+                                        ${form.styleTags.includes(tag)
+                                          ? 'bg-green-600 text-white'
+                                          : 'bg-gray-100 dark:bg-gray-700'}`}>
+                                      {tag}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* Grammar-check toggle */}
+                              <div className="flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold">Grammar-check pass</span>
+                                  <Switch checked={form.grammarCheck} onChange={() => toggleBoolean('grammarCheck')}
+                                    className={`${form.grammarCheck ? 'bg-blue-600' : 'bg-gray-400'}
+                                            relative inline-flex h-6 w-11 items-center rounded-full`}>
+                                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition
+                                      ${form.grammarCheck ? 'translate-x-6' : 'translate-x-1'}`} />
+                                  </Switch>
+                                </div>
+                                <p className="text-sm text-gray-500">Runs final grammar suggestions.</p>
+                              </div>
+                            </div>
+
+                            {/* 6 · Creativity (full-width) */}
+                            <div>
+                              <label className="font-semibold block mb-2">Creativity (temperature)</label>
+                              <input
+                                type="range"
+                                min={0} max={2} step={1}
+                                name="formality"
+                                value={form.formality}
+                                onChange={e =>
+                                  setForm(f => ({
+                                    ...f,
+                                    // parseamos y casteamos a la unión literal
+                                    formality: Number(e.target.value) as 0 | 1 | 2
+                                  }))
+                                }
+                                className="w-full"
                               />
-                        </Switch>
-                      </div>
-                    </div>
-    
-                    {/* --- 5 · Attachment (same drag & drop UI) */}
-                    <div>
-                      <label className="block font-semibold mb-2">
-                        Upload Supporting Document (optional)
-                      </label>
-                      <div onDragOver={handleDragOver} onDragLeave={handleDragLeave}
-                           onDrop={handleDrop} onClick={()=>fileInputRef.current?.click()}
-                           className={`flex items-center justify-center p-6 border-2 border-dashed rounded-lg
-                             cursor-pointer transition
-                             ${dragActive?'border-blue-400 bg-blue-50':'border-gray-300 bg-white dark:bg-gray-700'}`}>
-                        {!form.file ? (
-                          <p className="text-gray-500 dark:text-gray-400">
-                            Drag & drop PDF/DOCX, or click to browse
-                          </p>
-                        ) : (
-                          <div className="flex items-center space-x-4">
-                            <p>{form.file.name} ({(form.file.size/1048576).toFixed(2)} MB)</p>
-                            <button type="button" onClick={handleFileRemove}
-                                    className="text-red-500 hover:underline">Remove</button>
+
+                              <p className="text-sm mt-1">Current: {form.creativity}</p>
+                            </div>
+
+                            {/* 7 · Attachment & Examples */}
+                            <div className="grid gap-8 md:grid-cols-2">
+                              {/* Upload UI */}
+                              <div>
+                                <label className="block font-semibold mb-2">Upload Supporting Document (optional)</label>
+                                <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`flex items-center justify-center p-6 border-2 border-dashed rounded-lg
+                                      cursor-pointer transition
+                                      ${dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white dark:bg-gray-700'}`}>
+                                  {!form.file ? (
+                                    <p className="text-gray-500 dark:text-gray-400">Drag & drop PDF/DOCX, or click to browse</p>
+                                  ) : (
+                                    <div className="flex items-center space-x-4">
+                                      <p>{form.file.name} ({(form.file.size / 1048576).toFixed(2)} MB)</p>
+                                      <button type="button" onClick={handleFileRemove}
+                                              className="text-red-500 hover:underline">Remove</button>
+                                    </div>
+                                  )}
+                                  <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx"
+                                        onChange={handleFileChange} className="hidden" />
+                                </div>
+                                {fileError && <p className="text-red-500 text-sm mt-1">{fileError}</p>}
+                              </div>
+                              {/* Examples */}
+                              <div className="flex items-center">
+                                <p className="text-sm text-gray-500">e.g., CV, job posting, scholarship instructions</p>
+                              </div>
+                            </div>
+
+                            {/* Navigation */}
+                            <div className="flex space-x-4">
+                              <button type="button" onClick={handlePrev}
+                                      className="flex-1 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600">Previous</button>
+                              <button type="submit" disabled={isGenerating}
+                                      className="flex-1 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50">
+                                {isGenerating ? 'Generating…' : 'Generate Letter'}
+                              </button>
+                            </div>
                           </div>
                         )}
-                        <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx"
-                               onChange={handleFileChange} className="hidden" />
-                      </div>
-                      {fileError && <p className="text-red-500 text-sm mt-1">{fileError}</p>}
-                    </div>
-    
-                    {/* --- 6 · Live summary */}
-                    <div className="text-sm text-gray-600 dark:text-gray-400 italic">
-                      {summaryStr}
-                    </div>
-    
-                    {/* Navigation */}
-                    <div className="flex space-x-4">
-                      <button type="button" onClick={handlePrev}
-                              className="flex-1 py-4 bg-gray-500 text-white rounded-xl
-                                         hover:bg-gray-600">Previous</button>
-                      <button type="submit" disabled={isGenerating}
-                              className="flex-1 py-4 bg-green-600 text-white rounded-xl
-                                         hover:bg-green-700 disabled:opacity-50">
-                        {isGenerating ? 'Generating…' : 'Generate Letter'}
-                      </button>
-                    </div>
-                  </div>)}
+
     
                 {/* Navigation for steps 1-4 */}
                 {currentStep < 5 && (
