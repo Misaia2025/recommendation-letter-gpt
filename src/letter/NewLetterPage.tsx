@@ -3,8 +3,8 @@ import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse, createFile } from 'wasp/client/operations';
 import { BsCheckCircleFill } from 'react-icons/bs'; // check-mark icon
 import Confetti from 'react-confetti';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 import { HiMiniDocumentText, HiMiniSparkles } from 'react-icons/hi2'; // loader icons
 
 
@@ -371,30 +371,30 @@ frags.push(
 
   // ------------------------------------------------------------------
 // Descarga la carta generada como PDF
-const handleDownloadPdf = async () => {
-  if (!draft) return;                 // Por si acaso no hay texto
+// ------------------------------------------------------------------
+// Descarga la carta generada como Word (.docx)
+const handleDownloadDocx = async () => {
+  if (!draft) return; // no hay carta
 
-  // 1) Crear un contenedor temporal con el texto plain
-  const dummy = document.createElement('div');
-  dummy.style.width = '800px';
-  dummy.style.padding = '32px';
-  dummy.style.fontFamily = 'Inter, Arial, sans-serif';
-  dummy.innerText = draft;
-  document.body.appendChild(dummy);
+  // 1) Convertir cada línea en un párrafo
+  const paragraphs = draft.split('\n').map(line =>
+    new Paragraph({
+      children: [new TextRun(line)],
+      spacing: { after: 200 },
+      alignment: AlignmentType.JUSTIFIED, // 👈 justificado
+    })
+  );
+  
+  // 2) Crear el documento
+  const doc = new Document({
+    sections: [{ children: paragraphs }],
+  });
 
-  // 2) Capturar ese div como imagen
-  const canvas = await html2canvas(dummy, { scale: 2 });
-  const imgData = canvas.toDataURL('image/png');
-
-  // 3) Generar PDF con jsPDF
-  const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const ratio = pageWidth / canvas.width;
-  pdf.addImage(imgData, 'PNG', 0, 20, canvas.width * ratio, canvas.height * ratio);
-  pdf.save('Recommendation_Letter.pdf');
-
-  document.body.removeChild(dummy);   // limpiar
+  // 3) Empaquetar y forzar descarga
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, 'Recommendation_Letter.docx');
 };
+
 
 
   return (
@@ -1029,16 +1029,16 @@ const handleDownloadPdf = async () => {
 
             {/* PDF */}
             <button
-              onClick={handleDownloadPdf}
+              onClick={handleDownloadDocx}
               className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold
                         hover:bg-green-700 transition"
             >
-              Download PDF
+              Download DOCX
             </button>
           </div>
 
 
-          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg text-justify max-w-prose mx-auto">
             {draft}
           </div>
           <div className="flex space-x-4">
@@ -1088,7 +1088,7 @@ function LoadingCurtain () {
 
       {/* texto latente */}
       <p className="mt-4 text-xl font-semibold text-white animate-pulse">
-        Crafting your letter…
+        Crafting your letter… please wait. 
       </p>
     </div>
   );
