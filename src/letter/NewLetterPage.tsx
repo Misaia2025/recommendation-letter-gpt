@@ -3,6 +3,8 @@ import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse, createFile } from 'wasp/client/operations';
 import { BsCheckCircleFill } from 'react-icons/bs'; // check-mark icon
 import Confetti from 'react-confetti';
+import { HiMiniDocumentText, HiMiniSparkles } from 'react-icons/hi2'; // loader icons
+
 
 // VARIABLES DE ENTORNO PARA S3
 const S3_BUCKET = import.meta.env.VITE_S3_BUCKET as string
@@ -364,6 +366,8 @@ frags.push(
   }, [showConfetti]);
 
   return (
+    <>
+    {isGenerating && <LoadingCurtain />}        {/* ⬅️ nuevo overlay */}
     <main
       ref={mainRef}
           className="mx-auto w-full max-w-3xl sm:max-w-4xl px-4 sm:px-6 md:px-8 py-8 sm:py-10
@@ -398,7 +402,7 @@ frags.push(
       </div>
       {/* helper sentence – only on Step 1 */}
         {currentStep === 1 && (
-          <p className="my-13 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
+          <p className="my-8 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
             Select your Recommendation Letter type:
           </p>
         )}
@@ -977,5 +981,34 @@ frags.push(
         </div>
       )}
     </main>
+    </>
+  );
+}
+/* ------------------------------------------------------------------ */
+/* Full-screen loader ✨ */
+function LoadingCurtain () {
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center
+                 bg-black/60 backdrop-blur-sm">
+      {/* círculo arcoíris que gira */}
+      <div className="relative">
+        <div className="h-28 w-28 rounded-full
+                        bg-gradient-to-r from-green-400 via-blue-500 to-purple-600
+                        animate-spin-slow" />
+        {/* icono centrado */}
+        <HiMiniDocumentText className="absolute inset-0 m-auto text-white text-5xl" />
+      </div>
+
+      {/* chispas rebotando */}
+      <HiMiniSparkles className="mt-6 text-yellow-300 text-4xl animate-bounce" />
+
+      {/* texto latente */}
+      <p className="mt-4 text-xl font-semibold text-white animate-pulse">
+        Crafting your letter…
+      </p>
+    </div>
   );
 }
