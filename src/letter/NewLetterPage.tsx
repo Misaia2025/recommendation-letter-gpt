@@ -31,13 +31,44 @@ export default function NewLetterPage() {
   const [currentStep, setCurrentStep] = useState(1);
 
   const initialForm = {
+    // Step 1
     letterType: 'academic',
-    recName: '', recTitle: '', recOrg: '', relationship: 'manager', knownTime: 'lt1',
-    applicantName: '', achievements: '', skills: '', qualities: '',
-    recipientName: '', recipientPosition: '',
-    gpa: '', visaType: '', rentalAddress: '', residencySpecialty: '',
-    language: 'english', formality: 'formal', tone: 'enthusiastic', creativity: '0.5',
-    file: null as File | null
+  
+    // Step 2 (Recommender)
+    recName: '',
+    recLastName: '',
+    recTitle: '',
+    recOrg: '',
+    recAddress: '',
+  
+    relationship: 'manager',
+    relationshipOther: '',       // ← new field for “Other”
+    knownTime: 'lt6m',
+  
+    // Step 3 (Applicant)
+    applicantFirstName: '',
+    applicantLastName: '',
+    applicantPosition: '',     // ← new “Position/Program” field
+
+    // Step 3 optional extras
+    skillsAndQualities: '',     // ← single box for Skills + Qualities
+  
+    // Step 4 (Recipient + conditional)
+    recipientName: '',
+    recipientPosition: '',
+    gpa: '',
+    visaType: '',
+    rentalAddress: '',
+    residencySpecialty: '',
+  
+    // Step 5
+    language: 'english',
+    formality: 'formal',
+    tone: 'enthusiastic',
+    creativity: '0.5',
+  
+    // File upload
+    file: null as File | null,
   };
   const [form, setForm] = useState(initialForm);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -51,9 +82,11 @@ export default function NewLetterPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const KNOWN_TIMES: Record<string, string> = {
-    lt1: 'less than 1 year',
-    btw1and3: 'between 1 and 3 years',
-    gt3: 'more than 3 years'
+    lt6m:   'less than 6 months',
+    btw6m1y:'6 months to 1 year',
+    btw1y2y:'1 to 2 years',
+    btw2y5y:'2 to 5 years',
+    gt5y:   'more than 5 years',
   };
 
   const getProgress = () => (currentStep / totalSteps) * 100;
@@ -63,9 +96,20 @@ export default function NewLetterPage() {
       case 1:
         return Boolean(form.letterType);
       case 2:
-        return Boolean(form.recName && form.recTitle && form.recOrg);
+      // require the “Other” text if they picked Other
+        return Boolean(
+          form.recName &&
+          form.recLastName &&
+          form.recTitle &&
+          form.recOrg &&
+          (form.relationship !== 'other' || form.relationshipOther.trim() !== '')
+        );
+
       case 3:
-        return Boolean(form.applicantName);
+        return Boolean(
+          form.applicantFirstName.trim() &&
+          form.applicantLastName.trim()
+        );
       default:
         return true;
     }
@@ -74,8 +118,18 @@ export default function NewLetterPage() {
   const handleNext = () => {
     setTouched({});
     if (!isStepComplete()) {
-      if (currentStep === 2) setTouched({ recName: true, recTitle: true, recOrg: true });
-      if (currentStep === 3) setTouched({ applicantName: true });
+      if (currentStep === 2) setTouched({
+        recName: true,
+        recLastName: true,
+        recTitle: true,
+        recOrg: true,
+        relationshipOther: form.relationship === 'other' ? true : false,
+      });
+      
+      if (currentStep === 3) setTouched({ applicantFirstName: true,
+        applicantLastName: true
+        });
+        
       return;
     }
     if (currentStep < totalSteps) {
@@ -209,13 +263,39 @@ fileKey = s3UploadFields.key;
         form.language === 'spanish' ? 'Spanish' : 'English'
       }.`
     );
-    frags.push(
-      `Recommender: ${form.recName}, ${form.recTitle} at ${form.recOrg}, known for ${
-        KNOWN_TIMES[form.knownTime]
-      }.`
-    );
-    frags.push(`Applicant: ${form.applicantName}.`);
-    // ... mantén el resto de frags igual que antes ...
+// build full name + optional address
+const recFullName = `${form.recName} ${form.recLastName}`.trim();
+// decide which relationship text to show
+const relationText =
+  form.relationship === 'other'
+    ? form.relationshipOther.trim()
+    : ({
+        manager: 'Manager / Supervisor',
+        professor: 'Professor / Academic Advisor',
+        colleague: 'Coworker / Colleague',
+        mentor: 'Mentor / Coach',
+      }[form.relationship] || form.relationship);
+
+// build the full recommender line
+frags.push(
+  `Recommender: ${recFullName}, ${form.recTitle} at ${form.recOrg}` +
+    (form.recAddress ? `, Address: ${form.recAddress}` : '') +
+    `, Relationship: ${relationText}, known for ${KNOWN_TIMES[form.knownTime]}.`
+);
+
+
+  const applicantFullName = `${form.applicantFirstName} ${form.applicantLastName}`.trim();
+  frags.push(
+    `Applicant: ${applicantFullName}` +
+      (form.applicantPosition
+        ? `, applying for ${form.applicantPosition}`
+        : '') +
+      '.'
+  );
+  if (form.skillsAndQualities.trim()) {
+    frags.push(`Key skills & qualities: ${form.skillsAndQualities.trim()}.`);
+  }
+
     // Si quisieras incluir enlace al doc:
     if (fileKey) {
       frags.push(
@@ -308,162 +388,259 @@ fileKey = s3UploadFields.key;
           {/* Step 2: Recommender */}
           {currentStep === 2 && (
             <div className="grid gap-8">
+              {/* First + Last Name side by side */}
+              <div className="md:grid md:grid-cols-2 md:gap-8">
+                <div>
+                  <label
+                    htmlFor="recName"
+                    className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2"
+                  >
+                    Recommender First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="recName"
+                    name="recName"
+                    value={form.recName}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    autoFocus
+                    placeholder="e.g., Jane"
+                    className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                  {touched.recName && !form.recName && (
+                    <p className="text-red-500 text-sm mt-1">
+                      Please enter the recommender's first name.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label
+                    htmlFor="recLastName"
+                    className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2"
+                  >
+                    Recommender Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="recLastName"
+                    name="recLastName"
+                    value={form.recLastName}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="e.g., Doe"
+                    className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                  {touched.recLastName && !form.recLastName && (
+                    <p className="text-red-500 text-sm mt-1">
+                      Please enter the recommender's last name.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Title / Position + Organization side by side */}
+              <div className="md:grid md:grid-cols-2 md:gap-8">
+                <div>
+                  <label
+                    htmlFor="recTitle"
+                    className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2"
+                  >
+                    Title / Position <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="recTitle"
+                    name="recTitle"
+                    value={form.recTitle}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="e.g., Senior Manager"
+                    className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                  {touched.recTitle && !form.recTitle && (
+                    <p className="text-red-500 text-sm mt-1">
+                      Please enter the recommender's title.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label
+                    htmlFor="recOrg"
+                    className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2"
+                  >
+                    Organization <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="recOrg"
+                    name="recOrg"
+                    value={form.recOrg}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="e.g., Acme Corp"
+                    className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                  {touched.recOrg && !form.recOrg && (
+                    <p className="text-red-500 text-sm mt-1">
+                      Please enter the organization.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* New: Recommender Address */}
               <div>
-                <label htmlFor="recName" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Recommender Name <span className="text-red-500">*</span>
+                <label
+                  htmlFor="recAddress"
+                  className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2"
+                >
+                  Recommender Address (optional)
                 </label>
                 <input
-                  id="recName" 
-                  name="recName" 
-                  value={form.recName} 
-                  onChange={handleChange} 
-                  onBlur={handleBlur} 
-                  autoFocus 
-                  placeholder="e.g., Jane Doe"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400" 
+                  id="recAddress"
+                  name="recAddress"
+                  value={form.recAddress}
+                  onChange={handleChange}
+                  placeholder="e.g., 123 Main St, City"
+                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 />
-                {touched.recName && !form.recName && (
-                  <p className="text-red-500 text-sm mt-1">Please enter the recommender's name.</p>
-                )}
               </div>
-              <div>
-                <label htmlFor="recTitle" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Title / Position <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="recTitle" 
-                  name="recTitle" 
-                  value={form.recTitle} 
-                  onChange={handleChange} 
-                  onBlur={handleBlur} 
-                  placeholder="e.g., Senior Manager"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400" 
-                />
-                {touched.recTitle && !form.recTitle && (
-                  <p className="text-red-500 text-sm mt-1">Please enter the recommender's title.</p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="recOrg" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Organization <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="recOrg" 
-                  name="recOrg" 
-                  value={form.recOrg} 
-                  onChange={handleChange} 
-                  onBlur={handleBlur} 
-                  placeholder="e.g., Acme Corp"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400" 
-                />
-                {touched.recOrg && !form.recOrg && (
-                  <p className="text-red-500 text-sm mt-1">Please enter the organization.</p>
-                )}
-              </div>
+
+              {/* Relationship + Known Time */}
               <div className="md:grid md:grid-cols-2 md:gap-8">
                 <div>
                   <label htmlFor="relationship" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                     Relationship
                   </label>
                   <select
-                    id="relationship" 
-                    name="relationship" 
-                    value={form.relationship} 
+                    id="relationship"
+                    name="relationship"
+                    value={form.relationship}
                     onChange={handleChange}
                     className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   >
-                    <option value="manager">Manager / Supervisor</option>
-                    <option value="professor">Professor / Advisor</option>
-                    <option value="colleague">Colleague</option>
-                    <option value="mentor">Mentor</option>
-                    <option value="other">Other</option>
+                      <option value="manager">Manager / Supervisor</option>
+                      <option value="professor">Professor / Academic Advisor</option>
+                      <option value="colleague">Coworker / Colleague</option>
+                      <option value="mentor">Mentor / Coach</option>
+                      <option value="other">Other </option>
                   </select>
+                  {form.relationship === 'other' && (
+                  <div>
+                    <label
+                      htmlFor="relationshipOther"
+                      className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2"
+                    >
+                      Please specify Relationship <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="relationshipOther"
+                      name="relationshipOther"
+                      value={form.relationshipOther}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="e.g., Team Lead, Research Partner"
+                      className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                    />
+                    {touched.relationshipOther && !form.relationshipOther.trim() && (
+                      <p className="text-red-500 text-sm mt-1">
+                        Please describe your relationship.
+                      </p>
+                    )}
+                  </div>
+                )}
                 </div>
                 <div>
                   <label htmlFor="knownTime" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                     Known Time
                   </label>
                   <select
-                    id="knownTime" 
-                    name="knownTime" 
-                    value={form.knownTime} 
+                    id="knownTime"
+                    name="knownTime"
+                    value={form.knownTime}
                     onChange={handleChange}
                     className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   >
-                    <option value="lt1">Less than 1 year</option>
-                    <option value="btw1and3">1–3 years</option>
-                    <option value="gt3">More than 3 years</option>
+                    <option value="lt6m">Less than 6 months</option>
+                    <option value="btw6m1y">6 months to 1 year</option>
+                    <option value="btw1y2y">1 to 2 years</option>
+                    <option value="btw2y5y">2 to 5 years</option>
+                    <option value="gt5y">More than 5 years</option>
                   </select>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 3: Applicant */}
-          {currentStep === 3 && (
-            <div className="grid gap-8">
-              <div>
-                <label htmlFor="applicantName" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Applicant Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="applicantName"
-                  name="applicantName"
-                  value={form.applicantName}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  autoFocus
-                  placeholder="e.g., John Smith"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
-                />
-                {touched.applicantName && !form.applicantName && (
-                  <p className="text-red-500 text-sm mt-1">Please enter the applicant's name.</p>
-                )}
+            {currentStep === 3 && (
+              <div className="grid gap-8">
+                {/* First + Last Name side by side */}
+                <div className="md:grid md:grid-cols-2 md:gap-8">
+                  <div>
+                    <label htmlFor="applicantFirstName" className="block text-lg font-semibold mb-2">
+                      Applicant First Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="applicantFirstName"
+                      name="applicantFirstName"
+                      value={form.applicantFirstName}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="e.g., John"
+                      className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                    />
+                    {touched.applicantFirstName && !form.applicantFirstName.trim() && (
+                      <p className="text-red-500 text-sm mt-1">Please enter the applicant's first name.</p>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor="applicantLastName" className="block text-lg font-semibold mb-2">
+                      Applicant Last Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="applicantLastName"
+                      name="applicantLastName"
+                      value={form.applicantLastName}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      placeholder="e.g., Smith"
+                      className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                    />
+                    {touched.applicantLastName && !form.applicantLastName.trim() && (
+                      <p className="text-red-500 text-sm mt-1">Please enter the applicant's last name.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Position / Program (optional) */}
+                <div>
+                  <label htmlFor="applicantPosition" className="block text-lg font-semibold mb-2">
+                    Position/Program Applying To (optional)
+                  </label>
+                  <input
+                    id="applicantPosition"
+                    name="applicantPosition"
+                    value={form.applicantPosition}
+                    onChange={handleChange}
+                    placeholder="e.g., MBA Program, Software Engineer Role"
+                    className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                {/* Skills + Qualities combined */}
+                <div>
+                  <label htmlFor="skillsAndQualities" className="block text-lg font-semibold mb-2">
+                    Skills & Qualities (optional)
+                  </label>
+                  <textarea
+                    id="skillsAndQualities"
+                    name="skillsAndQualities"
+                    rows={4}
+                    value={form.skillsAndQualities}
+                    onChange={handleChange}
+                    placeholder="e.g., Project management; Attention to detail; Leadership"
+                    className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
               </div>
-              <div>
-                <label htmlFor="achievements" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Achievements (optional)
-                </label>
-                <textarea
-                  id="achievements"
-                  name="achievements"
-                  rows={4}
-                  value={form.achievements}
-                  onChange={handleChange}
-                  placeholder="e.g., Increased sales by 20% in Q1"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-              <div>
-                <label htmlFor="skills" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Skills (optional)
-                </label>
-                <textarea
-                  id="skills"
-                  name="skills"
-                  rows={3}
-                  value={form.skills}
-                  onChange={handleChange}
-                  placeholder="e.g., Project management, Data analysis"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-              <div>
-                <label htmlFor="qualities" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                  Qualities (optional)
-                </label>
-                <textarea
-                  id="qualities"
-                  name="qualities"
-                  rows={3}
-                  value={form.qualities}
-                  onChange={handleChange}
-                  placeholder="e.g., Team player, Attention to detail"
-                  className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-            </div>
-          )}
+            )}
 
           {/* Step 4: Recipient & Conditional Fields */}
           {currentStep === 4 && (
