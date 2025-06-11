@@ -15,9 +15,10 @@ type LetterGroup = 'education' | 'professional' | 'personal';
 const LETTER_TYPES: { value: string; label: string; group: LetterGroup }[] = [
   /* Education-related (blue) */
   { value: 'academic',   label: '🎓 Academic (University)',         group: 'education' },
-  { value: 'scholarship',label: '🧑‍🏫 Scholarship / Financial Aid', group: 'education' },
+  { value: 'scholarship',label: '🧑‍🏫 Scholarships & Aid', group: 'education' },
   { value: 'medical',    label: '🧑‍⚕️ Medical Residency',          group: 'education' },
-  { value: 'internship', label: '📋 Internship',                    group: 'education' },
+  { value: 'internship', label: '📋 Internship', group: 'professional' },
+
 
   /* Professional-related (green) */
   { value: 'job',        label: '💼 Job / Employment',              group: 'professional' },
@@ -365,7 +366,10 @@ frags.push(
   return (
     <main
       ref={mainRef}
-      className="mx-auto max-w-screen-lg px-12 py-10 bg-white dark:bg-gray-800 rounded-2xl shadow-xl space-y-6 mt-10"
+      className="mx-auto w-full max-w-3xl sm:max-w-4xl px-4 sm:px-6 md:px-8 py-8 sm:py-10
+      bg-white dark:bg-gray-800 rounded-2xl shadow-xl space-y-6
+      mt-6 mb-16 sm:my-20"
+
     >
       {showConfetti && <Confetti numberOfPieces={200} />}
       {successMsg && (
@@ -379,7 +383,7 @@ frags.push(
         </div>
       )}
 
-      <h1 className="text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
+      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
         Generate <span className="text-yellow-500">Recommendation Letter</span>
       </h1>
 
@@ -396,51 +400,55 @@ frags.push(
       </div>
       {/* helper sentence – only on Step 1 */}
         {currentStep === 1 && (
-          <p className="mt-6 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
-            Select your Recommendation Letter type
+          <p className="my-8 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
+            Select your Recommendation Letter type:
           </p>
         )}
 
 
       {!draft ? (
         <form onSubmit={handleSubmit} className="space-y-10">
-        {/* Step 1: Letter Basics */}
-        {currentStep === 1 && (
-          <div className="space-y-8">
-            {['education', 'professional', 'personal'].map((grp) => {
-              const g = grp as LetterGroup;              // para acceder a los mapas de colores
+      {/* Step 1: Letter Basics */}
+      {currentStep === 1 && (
+        <div className="space-y-8">
+          {['education', 'professional', 'personal'].map((grp) => {
+            const g = grp as LetterGroup;
 
-              return (
-                <div key={g} className="flex flex-wrap gap-4">
-                  {LETTER_TYPES.filter((t) => t.group === g).map(({ value, label, group }) => {
-                    const isActive = form.letterType === value;
-                    const g2 = group as LetterGroup;
+            return (
+              /* ➜ Grid responsiva: 1 col móvil, 2 col ≥640 px, 3 col ≥1024 px */
+              <div key={g} className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {LETTER_TYPES.filter((t) => t.group === g).map(({ value, label, group }) => {
+                  const isActive = form.letterType === value;
+                  const g2 = group as LetterGroup;
 
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, letterType: value }))}
-                        className={`relative px-6 py-5 rounded-2xl font-medium transition ring-offset-2
-                          focus:outline-none
-                          ${isActive
-                            ? `${GROUP_BG[g2]} ${GROUP_BORDER[g2]} ring-4 ${GROUP_RING[g2]} shadow-md`
-                            : `border border-gray-300 ${GROUP_BG[g2]} hover:scale-[1.03]`
-                          }`}
-                      >
-                        {/* check-mark que aparece solo en la opción seleccionada */}
-                        {isActive && (
-                          <BsCheckCircleFill className="absolute top-2 right-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-                        )}
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, letterType: value }))}
+                      /* w-full para ocupar la celda completa, padding y texto responsivos */
+                      className={`relative w-full rounded-2xl font-medium transition ring-offset-2 focus:outline-none
+                        px-4 py-3 text-sm
+                        sm:px-5 sm:py-4 sm:text-base
+                        lg:px-6 lg:py-5 lg:text-lg
+                        ${isActive
+                          ? `${GROUP_BG[g2]} ${GROUP_BORDER[g2]} ring-4 ${GROUP_RING[g2]} shadow-md`
+                          : `border border-gray-300 ${GROUP_BG[g2]} hover:scale-[1.03]`
+                        }`}
+                    >
+                      {isActive && (
+                        <BsCheckCircleFill className="absolute top-2 right-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      )}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
 
 
           {/* Step 2: Recommender */}
