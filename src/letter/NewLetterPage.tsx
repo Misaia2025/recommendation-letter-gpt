@@ -958,65 +958,54 @@
                   </div>)}
               </form>
             ) : (
-              
-/* DRAFT VIEW */
+              /* DRAFT VIEW (same as before) */
               <div className="space-y-6">
-                <div className="mt-11 w-full max-w-md mx-auto flex items-center justify-between">
-                  {/* ← Previous con flecha */}
+                <div className="mt-11 w-full max-w-4xl mx-auto flex items-center justify-between gap-4">
+                  {/* ← Nuevo “Previous” */}
                   <button
                     type="button"
                     onClick={() => {
-                      setDraft('');
-                      setCurrentStep(5);
-                      scrollToTop();
+                      setDraft('');            // quita el draft
+                      setCurrentStep(5);       // vuelve al paso 5 del wizard
+                      scrollToTop();           // sube al principio
                     }}
-                    className="flex-none px-6 py-3 bg-gray-500 text-white rounded-xl font-semibold hover:bg-gray-600"
+                    className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-semibold hover:bg-gray-600"
                   >
-                    <HiMiniArrowLeft className="inline-block mr-2 align-text-bottom" />
-                    Previous
+                    🠔  Advanced Options
                   </button>
 
-                  {/* Agrupamos Copy + Download a la derecha */}
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(draft);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                      className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
-                    >
-                      {copied ? 'Copied!' : 'Copy to Clipboard'}
-                    </button>
+                  {/* Copy to Clipboard */}
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(draft);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700"
+                  >
+                    {copied ? 'Copied!' : 'Copy to Clipboard'}
+                  </button>
 
-                    <button
-                      onClick={handleDownloadDocx}
-                      className="px-8 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700"
-                    >
-                      Download DOCX
-                    </button>
-                  </div>
+                  {/* Download DOCX */}
+                  <button
+                    onClick={handleDownloadDocx}
+                    className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700"
+                  >
+                    Download DOCX
+                  </button>
+
                 </div>
-
-                {/* Carta generada */}
-                <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg text-justify">
+                <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700
+                rounded-lg text-justify max-w-4xl w-full mx-auto">
                   {draft}
                 </div>
 
-                {/* Botón “Generate Another Letter” */}
-                <button
-                  onClick={() => {
-                    setDraft('');
-                    setCurrentStep(1);
-                    setForm(initialForm);
-                    scrollToTop();
-                  }}
-                  className="w-full py-4 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-semibold hover:bg-gray-400 dark:hover:bg-gray-500"
-                >
+                <button onClick={()=>{setDraft('');setCurrentStep(1);setForm(initialForm);scrollToTop();}}
+                        className="w-full py-4 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white
+                                   rounded-xl font-semibold hover:bg-gray-400 dark:hover:bg-gray-500">
                   🔄 Generate Another Letter
                 </button>
-              </div>
-              )}   {/* <-- cierra el ternario {!draft ? … : … } */}
+              </div>)}
           </main>
         </>
       );
