@@ -383,11 +383,7 @@ frags.push(
         Generate <span className="text-yellow-500">Recommendation Letter</span>
       </h1>
 
-      {/* helper sentence */}
-        <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">
-          Select the type of letter you want
-        </p>
-
+     
 
       <div className="text-center text-lg font-medium">
         Step {currentStep} of {totalSteps}
@@ -398,6 +394,13 @@ frags.push(
           style={{ width: `${getProgress()}%` }}
         />
       </div>
+      {/* helper sentence – only on Step 1 */}
+        {currentStep === 1 && (
+          <p className="mt-6 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
+            Select your Recommendation Letter type
+          </p>
+        )}
+
 
       {!draft ? (
         <form onSubmit={handleSubmit} className="space-y-10">
