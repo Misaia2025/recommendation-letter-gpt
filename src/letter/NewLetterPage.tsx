@@ -1,6 +1,7 @@
 import React, { useState, useRef, ChangeEvent, FormEvent, useEffect, FocusEvent } from 'react';
 import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse, createFile } from 'wasp/client/operations';
+import { BsCheckCircleFill } from 'react-icons/bs'; // check-mark icon
 import Confetti from 'react-confetti';
 
 // VARIABLES DE ENTORNO PARA S3
@@ -8,18 +9,46 @@ const S3_BUCKET = import.meta.env.VITE_S3_BUCKET as string
 const S3_REGION = import.meta.env.VITE_S3_REGION as string
 
 // Letter type options for Step 1
-const LETTER_TYPES = [
-  { value: 'academic', label: 'Academic (University)' },
-  { value: 'job', label: 'Job / Employment' },
-  { value: 'immigration', label: 'Immigration / Visa' },
-  { value: 'internship', label: 'Internship' },
-  { value: 'scholarship', label: 'Scholarship / Financial Aid' },
-  { value: 'graduate', label: 'Graduate School' },
-  { value: 'medical', label: 'Medical Residency' },
-  { value: 'volunteer', label: 'Volunteer / NGO' },
-  { value: 'tenant', label: 'Tenant / Landlord' },
-  { value: 'personal', label: 'Personal / Character' }
+// Letter type options for Step 1 – organised + emoji + group tag
+type LetterGroup = 'education' | 'professional' | 'personal';
+
+const LETTER_TYPES: { value: string; label: string; group: LetterGroup }[] = [
+  /* Education-related (blue) */
+  { value: 'academic',   label: '🎓 Academic (University)',         group: 'education' },
+  { value: 'scholarship',label: '🧑‍🏫 Scholarship / Financial Aid', group: 'education' },
+  { value: 'medical',    label: '🧑‍⚕️ Medical Residency',          group: 'education' },
+  { value: 'internship', label: '📋 Internship',                    group: 'education' },
+
+  /* Professional-related (green) */
+  { value: 'job',        label: '💼 Job / Employment',              group: 'professional' },
+  { value: 'volunteer',  label: '🤝 Volunteer / NGO',               group: 'professional' },
+
+  /* Personal / Legal (gray) */
+  { value: 'immigration',label: '🛂 Immigration / Visa',            group: 'personal' },
+  { value: 'tenant',     label: '🏠 Tenant / Landlord',             group: 'personal' },
+  { value: 'personal',   label: '👤 Personal / Character',          group: 'personal' }
 ];
+
+
+/* --- Colour maps for the three logical groups --- */
+const GROUP_BG: Record<LetterGroup, string> = {
+  education:    'bg-blue-50  dark:bg-blue-900/40',
+  professional: 'bg-green-50 dark:bg-green-900/40',
+  personal:     'bg-gray-50  dark:bg-gray-800/50'
+};
+
+const GROUP_BORDER: Record<'education' | 'professional' | 'personal', string> = {
+  education:    'border-blue-600',
+  professional: 'border-green-600',
+  personal:     'border-gray-600'
+};
+const GROUP_RING: Record<LetterGroup, string> = {
+  education:    'ring-blue-400/70',
+  professional: 'ring-green-400/70',
+  personal:     'ring-gray-400/70'
+};
+
+
 
 export default function NewLetterPage() {
   const { data: user } = useAuth();
@@ -354,6 +383,12 @@ frags.push(
         Generate <span className="text-yellow-500">Recommendation Letter</span>
       </h1>
 
+      {/* helper sentence */}
+        <p className="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">
+          Select the type of letter you want
+        </p>
+
+
       <div className="text-center text-lg font-medium">
         Step {currentStep} of {totalSteps}
       </div>
@@ -366,25 +401,44 @@ frags.push(
 
       {!draft ? (
         <form onSubmit={handleSubmit} className="space-y-10">
-          {/* Step 1: Letter Basics */}
-          {currentStep === 1 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-              {LETTER_TYPES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, letterType: value }))}
-                  className={`px-6 py-5 border rounded-2xl text-center font-medium transform transition hover:scale-105 focus:outline-none dark:text-gray-200 ${
-                    form.letterType === value
-                      ? 'border-blue-600 bg-blue-100 dark:bg-gray-700'
-                      : 'border-gray-300 bg-white dark:bg-gray-700'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Step 1: Letter Basics */}
+        {currentStep === 1 && (
+          <div className="space-y-8">
+            {['education', 'professional', 'personal'].map((grp) => {
+              const g = grp as LetterGroup;              // para acceder a los mapas de colores
+
+              return (
+                <div key={g} className="flex flex-wrap gap-4">
+                  {LETTER_TYPES.filter((t) => t.group === g).map(({ value, label, group }) => {
+                    const isActive = form.letterType === value;
+                    const g2 = group as LetterGroup;
+
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, letterType: value }))}
+                        className={`relative px-6 py-5 rounded-2xl font-medium transition ring-offset-2
+                          focus:outline-none
+                          ${isActive
+                            ? `${GROUP_BG[g2]} ${GROUP_BORDER[g2]} ring-4 ${GROUP_RING[g2]} shadow-md`
+                            : `border border-gray-300 ${GROUP_BG[g2]} hover:scale-[1.03]`
+                          }`}
+                      >
+                        {/* check-mark que aparece solo en la opción seleccionada */}
+                        {isActive && (
+                          <BsCheckCircleFill className="absolute top-2 right-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        )}
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
 
           {/* Step 2: Recommender */}
           {currentStep === 2 && (
@@ -672,7 +726,7 @@ frags.push(
                   className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                 />
               </div>
-              {['scholarship','graduate'].includes(form.letterType) && (
+              {['scholarship'].includes(form.letterType) && (
                 <div>
                   <label htmlFor="gpa" className="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
                     Applicant GPA (optional)
