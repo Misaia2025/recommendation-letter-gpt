@@ -3,6 +3,8 @@ import { useAuth } from 'wasp/client/auth';
 import { generateGptResponse, createFile } from 'wasp/client/operations';
 import { BsCheckCircleFill } from 'react-icons/bs'; // check-mark icon
 import Confetti from 'react-confetti';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { HiMiniDocumentText, HiMiniSparkles } from 'react-icons/hi2'; // loader icons
 
 
@@ -61,6 +63,8 @@ export default function NewLetterPage() {
 
   const totalSteps = 5;
   const [currentStep, setCurrentStep] = useState(1);
+  const [copied, setCopied] = useState(false);            // feedback copy
+
 
   const initialForm = {
     // Step 1
@@ -365,6 +369,34 @@ frags.push(
     }
   }, [showConfetti]);
 
+  // ------------------------------------------------------------------
+// Descarga la carta generada como PDF
+const handleDownloadPdf = async () => {
+  if (!draft) return;                 // Por si acaso no hay texto
+
+  // 1) Crear un contenedor temporal con el texto plain
+  const dummy = document.createElement('div');
+  dummy.style.width = '800px';
+  dummy.style.padding = '32px';
+  dummy.style.fontFamily = 'Inter, Arial, sans-serif';
+  dummy.innerText = draft;
+  document.body.appendChild(dummy);
+
+  // 2) Capturar ese div como imagen
+  const canvas = await html2canvas(dummy, { scale: 2 });
+  const imgData = canvas.toDataURL('image/png');
+
+  // 3) Generar PDF con jsPDF
+  const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const ratio = pageWidth / canvas.width;
+  pdf.addImage(imgData, 'PNG', 0, 20, canvas.width * ratio, canvas.height * ratio);
+  pdf.save('Recommendation_Letter.pdf');
+
+  document.body.removeChild(dummy);   // limpiar
+};
+
+
   return (
     <>
     {isGenerating && <LoadingCurtain />}        {/* ⬅️ nuevo overlay */}
@@ -375,7 +407,10 @@ frags.push(
     >
       {showConfetti && <Confetti numberOfPieces={200} />}
       {successMsg && (
-        <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-md">
+        <div className="fixed z-[9999] top-20 sm:top-16 right-5
+        bg-green-100 border border-green-400 text-green-700
+        px-4 py-3 rounded-lg shadow-md">
+
           ✅ {successMsg}
         </div>
       )}
@@ -385,21 +420,37 @@ frags.push(
         </div>
       )}
 
-      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
-        Generate <span className="text-yellow-500">Recommendation Letter</span>
-      </h1>
+      {/* Título principal: cambia al generar la carta */}
+        {!draft ? (
+          /* Antes de generar */
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
+            Generate <span className="text-yellow-500">Recommendation Letter</span>
+          </h1>
+        ) : (
+          /* Después de generar */
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-center text-gray-900 dark:text-gray-100">
+            Letter <span className="text-yellow-500">Generated</span>
+          </h1>
+        )}
+
 
      
 
-      <div className="mt-4 text-lg font-medium text-center">
-        Step {currentStep} of {totalSteps}
-      </div>
-      <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
-        <div
-          className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 transition-all"
-          style={{ width: `${getProgress()}%` }}
-        />
-      </div>
+      {!draft && (
+          <>
+            <div className="mt-4 text-lg font-medium text-center">
+              Step {currentStep} of {totalSteps}
+            </div>
+
+            <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+              <div
+                className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 transition-all"
+                style={{ width: `${getProgress()}%` }}
+              />
+            </div>
+          </>
+        )}
+
       {/* helper sentence – only on Step 1 */}
         {currentStep === 1 && (
           <p className="my-8 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
@@ -960,23 +1011,48 @@ frags.push(
       ) : (
         /* Draft view */
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold">Generated Letter</h2>
+          {/* Action bar */}
+          {/* Action bar centrado y ancho completo */}
+          <div className="mt-9 w-full max-w-md mx-auto flex flex-col sm:flex-row gap-4 mb-6">
+            {/* Copy */}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(draft);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold
+                        hover:bg-blue-700 transition"
+            >
+              {copied ? 'Copied!' : 'Copy to Clipboard'}
+            </button>
+
+            {/* PDF */}
+            <button
+              onClick={handleDownloadPdf}
+              className="flex-1 py-3 bg-green-600 text-white rounded-xl font-semibold
+                        hover:bg-green-700 transition"
+            >
+              Download PDF
+            </button>
+          </div>
+
+
           <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700 rounded-lg">
             {draft}
           </div>
           <div className="flex space-x-4">
-            <button 
-              onClick={() => navigator.clipboard.writeText(draft)} 
-              className="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Copy to Clipboard
-            </button>
-            <button 
-              onClick={() => setDraft('')} 
-              className="flex-1 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-            >
-              Generate Another
-            </button>
+          <button
+            onClick={() => {
+              setDraft('');
+              setCurrentStep(1);
+              setForm(initialForm);
+              scrollToTop();
+            }}
+            className="w-full mt-1 py-4 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800 transition"
+          >
+            Generate Another
+          </button>
           </div>
         </div>
       )}
