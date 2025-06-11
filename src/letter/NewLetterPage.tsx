@@ -1013,7 +1013,7 @@ const handleDownloadPdf = async () => {
         <div className="space-y-6">
           {/* Action bar */}
           {/* Action bar centrado y ancho completo */}
-          <div className="mt-9 w-full max-w-md mx-auto flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="mt-11 w-full max-w-md mx-auto flex flex-col sm:flex-row gap-4 mb-2">
             {/* Copy */}
             <button
               onClick={() => {
@@ -1049,9 +1049,14 @@ const handleDownloadPdf = async () => {
               setForm(initialForm);
               scrollToTop();
             }}
-            className="w-full mt-1 py-4 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800 transition"
+            className="w-full mt-1 py-4
+            bg-gray-300 hover:bg-gray-400
+            dark:bg-gray-600 dark:hover:bg-gray-500
+            text-gray-900 dark:text-white
+            rounded-xl font-semibold transition"
+ 
           >
-            Generate Another
+            🔄 Generate Another Letter
           </button>
           </div>
         </div>
