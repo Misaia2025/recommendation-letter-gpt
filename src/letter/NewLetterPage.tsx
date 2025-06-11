@@ -51,7 +51,8 @@ export default function NewLetterPage() {
     applicantPosition: '',     // ← new “Position/Program” field
 
     // Step 3 optional extras
-    skillsAndQualities: '',     // ← single box for Skills + Qualities
+    skillsAndQualities: '',     // ← single box for Skills / Qualities / Achievements
+
   
     // Step 4 (Recipient + conditional)
     recipientName: '',
@@ -293,7 +294,7 @@ frags.push(
       '.'
   );
   if (form.skillsAndQualities.trim()) {
-    frags.push(`Key skills & qualities: ${form.skillsAndQualities.trim()}.`);
+    frags.push(`Key skills, qualities & achievements: ${form.skillsAndQualities.trim()}.`);
   }
 
     // Si quisieras incluir enlace al doc:
@@ -626,16 +627,16 @@ frags.push(
 
                 {/* Skills + Qualities combined */}
                 <div>
-                  <label htmlFor="skillsAndQualities" className="block text-lg font-semibold mb-2">
-                    Skills & Qualities (optional)
-                  </label>
+                <label htmlFor="skillsAndQualities" className="block text-lg font-semibold mb-2">
+                Skills / Qualities / Achievements (optional)
+                </label>
                   <textarea
                     id="skillsAndQualities"
                     name="skillsAndQualities"
                     rows={4}
                     value={form.skillsAndQualities}
                     onChange={handleChange}
-                    placeholder="e.g., Project management; Attention to detail; Leadership"
+                    placeholder="e.g., Project management; Attention to detail; Leadership; Award-winning project"
                     className="w-full bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
