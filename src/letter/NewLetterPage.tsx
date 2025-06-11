@@ -366,10 +366,8 @@ frags.push(
   return (
     <main
       ref={mainRef}
-      className="mx-auto w-full max-w-3xl sm:max-w-4xl px-4 sm:px-6 md:px-8 py-8 sm:py-10
-      bg-white dark:bg-gray-800 rounded-2xl shadow-xl space-y-6
-      mt-6 mb-16 sm:my-20"
-
+          className="mx-auto w-full max-w-3xl sm:max-w-4xl px-4 sm:px-6 md:px-8 py-8 sm:py-10
+           bg-white dark:bg-gray-800 rounded-2xl shadow-xl space-y-6 mt-6"
     >
       {showConfetti && <Confetti numberOfPieces={200} />}
       {successMsg && (
@@ -389,7 +387,7 @@ frags.push(
 
      
 
-      <div className="text-center text-lg font-medium">
+      <div className="mt-4 text-lg font-medium text-center">
         Step {currentStep} of {totalSteps}
       </div>
       <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
@@ -400,7 +398,7 @@ frags.push(
       </div>
       {/* helper sentence – only on Step 1 */}
         {currentStep === 1 && (
-          <p className="my-8 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
+          <p className="my-13 text-lg font-medium text-center text-gray-700 dark:text-gray-300">
             Select your Recommendation Letter type:
           </p>
         )}
@@ -678,7 +676,7 @@ frags.push(
                 {/* Position / Program (optional) */}
                 <div>
                   <label htmlFor="applicantPosition" className="block text-lg font-semibold mb-2">
-                    Position/Program Applying To (optional)
+                    Position /  Program Applying To (optional)
                   </label>
                   <input
                     id="applicantPosition"
