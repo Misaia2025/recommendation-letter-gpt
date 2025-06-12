@@ -76,7 +76,7 @@
       const scrollToTop = () => mainRef.current?.scrollIntoView({ behavior: 'smooth' });
     
       /* ——————————————————————————————————— Wizard state */
-      const totalSteps = 5;
+      const totalSteps = 3;
       const [currentStep, setCurrentStep] = useState(1);
       const [touched, setTouched] = useState<Record<string, boolean>>({});
       const [copied, setCopied] = useState(false);
@@ -95,7 +95,7 @@
         skillsAndQualities: '',
     
         /* Step 4 – Recipient / Conditional */
-        recipientName: '', recipientPosition: '', gpa: '', visaType: '',
+        gpa: '', visaType: '',
         rentalAddress: '', residencySpecialty: '',
     
         /* Step 5 – ✨ Personalisation (all new) */
@@ -125,7 +125,7 @@
       useEffect(() => {
         if (showConfetti) {
           // Apaga el confeti después de 3 segundos
-          const timer = setTimeout(() => setShowConfetti(false), 3000);
+          const timer = setTimeout(() => setShowConfetti(false), 5000);
           return () => clearTimeout(timer);
         }
       }, [showConfetti]);
@@ -362,18 +362,21 @@
                      : <>Generate <span className="text-yellow-500">Recommendation Letter</span></>}
             </h1>
     
-            {/* Stepper */}
-            {!draft && (
+           {/* Stepper (hidden on the final step) */}
+            {!draft && currentStep < totalSteps && (
               <>
                 <div className="mt-4 text-lg font-medium text-center">
                   Step {currentStep} of {totalSteps}
                 </div>
                 <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full">
-                  <div className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600"
-                       style={{ width:`${(currentStep/totalSteps)*100}%` }} />
+                  <div
+                    className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600"
+                    style={{ width:`${(currentStep/totalSteps)*100}%` }}
+                  />
                 </div>
               </>
             )}
+
     
             {/* Helper sentence Step 1 */}
             {currentStep === 1 && (
@@ -491,21 +494,7 @@
       </div>
     </div>
 
-    {/* Address optional */}
-    <div>
-      <label htmlFor="recAddress" className="block text-lg font-semibold mb-2">
-        Recommender Address (optional)
-      </label>
-      <input
-        id="recAddress"
-        name="recAddress"
-        value={form.recAddress}
-        onChange={handleChange}
-        placeholder="e.g., 123 Main St, City"
-        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-      />
-    </div>
-
+  
     {/* Relationship + Known time */}
     <div className="md:grid md:grid-cols-2 md:gap-8">
       <div>
@@ -574,10 +563,13 @@
 
 {currentStep === 3 && (
   <div className="grid gap-8">
-    {/* First + Last Name */}
+    {/* 3 · Applicant name */}
     <div className="md:grid md:grid-cols-2 md:gap-8">
       <div>
-        <label htmlFor="applicantFirstName" className="block text-lg font-semibold mb-2">
+        <label
+          htmlFor="applicantFirstName"
+          className="block text-lg font-semibold mb-2"
+        >
           Applicant First Name <span className="text-red-500">*</span>
         </label>
         <input
@@ -593,8 +585,12 @@
           <p className="text-red-500 text-sm mt-1">Required.</p>
         )}
       </div>
+
       <div>
-        <label htmlFor="applicantLastName" className="block text-lg font-semibold mb-2">
+        <label
+          htmlFor="applicantLastName"
+          className="block text-lg font-semibold mb-2"
+        >
           Applicant Last Name <span className="text-red-500">*</span>
         </label>
         <input
@@ -612,24 +608,113 @@
       </div>
     </div>
 
-    {/* Position / Program (optional) */}
-    <div>
-      <label htmlFor="applicantPosition" className="block text-lg font-semibold mb-2">
-        Position / Program Applying To (optional)
-      </label>
-      <input
-        id="applicantPosition"
-        name="applicantPosition"
-        value={form.applicantPosition}
-        onChange={handleChange}
-        placeholder="e.g., MBA Program"
-        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-      />
+    {/* 4 · Position & Conditional fields side-by-side */}
+    <div className="grid md:grid-cols-2 md:gap-8 gap-8">
+      {/* Position / Program Applying To */}
+      <div
+        className={`${
+          ['scholarship','immigration','tenant','medical'].includes(form.letterType)
+            ? ''
+            : 'md:col-span-2'
+        }`}
+      >
+        <label
+          htmlFor="applicantPosition"
+          className="block text-lg font-semibold mb-2"
+        >
+          Position / Program Applying To (optional)
+        </label>
+        <input
+          id="applicantPosition"
+          name="applicantPosition"
+          value={form.applicantPosition}
+          onChange={handleChange}
+          placeholder="e.g., MBA Program"
+          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+        />
+      </div>
+
+      {/* Conditional fields */}
+      {form.letterType === 'scholarship' && (
+        <div>
+          <label
+            htmlFor="gpa"
+            className="block text-lg font-semibold mb-2"
+          >
+            Applicant GPA (optional)
+          </label>
+          <input
+            id="gpa"
+            name="gpa"
+            value={form.gpa}
+            onChange={handleChange}
+            placeholder="e.g., 3.9 / 4.0"
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+          />
+        </div>
+      )}
+      {form.letterType === 'immigration' && (
+        <div>
+          <label
+            htmlFor="visaType"
+            className="block text-lg font-semibold mb-2"
+          >
+            Visa Type (optional)
+          </label>
+          <input
+            id="visaType"
+            name="visaType"
+            value={form.visaType}
+            onChange={handleChange}
+            placeholder="e.g., H-1B"
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+          />
+        </div>
+      )}
+      {form.letterType === 'tenant' && (
+        <div>
+          <label
+            htmlFor="rentalAddress"
+            className="block text-lg font-semibold mb-2"
+          >
+            Rental Address (optional)
+          </label>
+          <input
+            id="rentalAddress"
+            name="rentalAddress"
+            value={form.rentalAddress}
+            onChange={handleChange}
+            placeholder="e.g., 123 Main St, City"
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+          />
+        </div>
+      )}
+      {form.letterType === 'medical' && (
+        <div>
+          <label
+            htmlFor="residencySpecialty"
+            className="block text-lg font-semibold mb-2"
+          >
+            Residency Specialty (optional)
+          </label>
+          <input
+            id="residencySpecialty"
+            name="residencySpecialty"
+            value={form.residencySpecialty}
+            onChange={handleChange}
+            placeholder="e.g., Internal Medicine"
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+          />
+        </div>
+      )}
     </div>
 
-    {/* Skills & Qualities */}
+    {/* 5 · Skills & Qualities */}
     <div>
-      <label htmlFor="skillsAndQualities" className="block text-lg font-semibold mb-2">
+      <label
+        htmlFor="skillsAndQualities"
+        className="block text-lg font-semibold mb-2"
+      >
         Skills / Qualities / Achievements (optional)
       </label>
       <textarea
@@ -645,108 +730,11 @@
   </div>
 )}
 
-{currentStep === 4 && (
-  <div className="grid gap-8">
-    <div>
-      <label htmlFor="recipientName" className="block text-lg font-semibold mb-2">
-        Recipient Name (optional)
-      </label>
-      <input
-        id="recipientName"
-        name="recipientName"
-        value={form.recipientName}
-        onChange={handleChange}
-        placeholder="e.g., Admissions Committee"
-        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-      />
-    </div>
-
-    <div>
-      <label htmlFor="recipientPosition" className="block text-lg font-semibold mb-2">
-        Recipient Position (optional)
-      </label>
-      <input
-        id="recipientPosition"
-        name="recipientPosition"
-        value={form.recipientPosition}
-        onChange={handleChange}
-        placeholder="e.g., Dean of Admissions"
-        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-      />
-    </div>
-
-    {/* Conditional fields */}
-    {form.letterType === 'scholarship' && (
-      <div>
-        <label htmlFor="gpa" className="block text-lg font-semibold mb-2">
-          Applicant GPA (optional)
-        </label>
-        <input
-          id="gpa"
-          name="gpa"
-          value={form.gpa}
-          onChange={handleChange}
-          placeholder="e.g., 3.9 / 4.0"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-      </div>
-    )}
-
-    {form.letterType === 'immigration' && (
-      <div>
-        <label htmlFor="visaType" className="block text-lg font-semibold mb-2">
-          Visa Type (optional)
-        </label>
-        <input
-          id="visaType"
-          name="visaType"
-          value={form.visaType}
-          onChange={handleChange}
-          placeholder="e.g., H-1B"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-      </div>
-    )}
-
-    {form.letterType === 'tenant' && (
-      <div>
-        <label htmlFor="rentalAddress" className="block text-lg font-semibold mb-2">
-          Rental Address (optional)
-        </label>
-        <input
-          id="rentalAddress"
-          name="rentalAddress"
-          value={form.rentalAddress}
-          onChange={handleChange}
-          placeholder="e.g., 123 Main St, City"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-      </div>
-    )}
-
-    {form.letterType === 'medical' && (
-      <div>
-        <label htmlFor="residencySpecialty" className="block text-lg font-semibold mb-2">
-          Residency Specialty (optional)
-        </label>
-        <input
-          id="residencySpecialty"
-          name="residencySpecialty"
-          value={form.residencySpecialty}
-          onChange={handleChange}
-          placeholder="e.g., Internal Medicine"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-      </div>
-    )}
-  </div>
-)}
-
 {/* STEP 5 – ✨ REBUILT */}
-{currentStep === 5 && (
+{currentStep === 4 && (
   <div className="space-y-8">
-  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-10 mb-10">
-  Advanced Options
+  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-12 mb-12">
+  Advanced Options 📊
 </h1>
     {/* 1 · Top Section: Language & Tone */}
     <div className="grid gap-8 md:grid-cols-2">
@@ -890,9 +878,12 @@
 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
   {/* Upload UI */}
   <div className="col-span-full md:col-span-2">
-    <label className="block font-semibold mb-2">
-      Upload Supporting Document (optional) e.g., CV, job posting, scholarship instructions
-    </label>
+  <label className="block font-semibold mb-2">
+  Upload Supporting Document (optional){' '}
+  <span className="text-sm italic font-normal">
+    e.g., CV o Resume, job posting, scholarship instructions
+  </span>
+</label>
     <div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1002,7 +993,7 @@
         )}
     
                 {/* Navigation for steps 1-4 */}
-                {currentStep < 5 && (
+                {currentStep < 4 && (
                   <div className="flex justify-between space-x-4">
                     <button type="button" onClick={handlePrev} disabled={currentStep===1}
                             className="flex-1 py-3 bg-gray-500 text-white rounded-lg
@@ -1021,7 +1012,7 @@
                     type="button"
                     onClick={() => {
                       setDraft('');            // quita el draft
-                      setCurrentStep(5);       // vuelve al paso 5 del wizard
+                      setCurrentStep(4);       // vuelve al paso 5 del wizard
                       scrollToTop();           // sube al principio
                     }}
                     className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-semibold hover:bg-gray-600"
