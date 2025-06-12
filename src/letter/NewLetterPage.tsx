@@ -8,11 +8,12 @@
     import { useAuth } from 'wasp/client/auth';
     import { generateGptResponse, createFile } from 'wasp/client/operations';
     import { BsCheckCircleFill } from 'react-icons/bs';
-    import { HiMiniDocumentText, HiMiniSparkles, HiMiniArrowLeft } from 'react-icons/hi2';
+    import { HiMiniDocumentText, HiMiniSparkles, HiMiniArrowLeft, HiMiniChevronDown } from 'react-icons/hi2';
     import { Switch, Listbox } from '@headlessui/react';
     import Confetti from 'react-confetti';
     import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
     import { saveAs } from 'file-saver';
+    
     
     /* ------------------------------------------------------------------ */
     /*  CONSTANTS & ENUM-LIKE MAPS                                         */
@@ -50,13 +51,13 @@
     };
     
     // Step-5 preset lists
-    const TONE_PRESETS = ['Enthusiastic', 'Warm', 'Persuasive', 'Objective'] as const;
-    const OPENING_STYLES = ['Quote', 'Direct praise', 'Problem-solution'] as const;
+    const TONE_PRESETS = ['Neutral', 'Enthusiastic', 'Persuasive', 'Objective'] as const;
+    const OPENING_STYLES = [ 'Direct praise','Quote', 'Problem-solution'] as const;
     const PERSPECTIVES = [
       { id: 'first',  label: 'First-person (“I”)' },
       { id: 'inst',   label: 'Institutional (“We”)' },
     ] as const;
-    const WRITING_STYLE_TAGS = ['Storytelling', 'Bullet-points', 'Executive'] as const;
+    const WRITING_STYLE_TAGS = ['Executive', 'Bullet-points','Storytelling' ] as const;
     
     // S3 vars (unchanged)
     const S3_BUCKET = import.meta.env.VITE_S3_BUCKET as string;
@@ -98,17 +99,19 @@
         rentalAddress: '', residencySpecialty: '',
     
         /* Step 5 – ✨ Personalisation (all new) */
+        writingStyle: 'Executive',
         language: 'english',
-        formality: 2 as 0|1|2,                              // 0 casual → 2 formal
-        tonePreset: 'Enthusiastic' as typeof TONE_PRESETS[number],
+        formality: 0 as 0|1|2,                             // 0 casual → 2 formal
+        tonePreset: 'Neutral' as typeof TONE_PRESETS[number],
         lengthWords: 300,
         includeAnecdote: false,
         includeMetrics: false,
-        openingStyle: 'Quote' as typeof OPENING_STYLES[number],
+        openingStyle: 'Direct praise' as typeof OPENING_STYLES[number],
         perspective: 'first' as 'first'|'inst',
         styleTags: [] as string[],                         // multi-select chips
         creativity: 0.5,
         grammarCheck: false,
+        
     
         /* Attachment */
         file: null as File | null,
@@ -739,150 +742,191 @@
   </div>
 )}
 
- {/* STEP 5 – ✨ REBUILT */}
- {currentStep === 5 && (
-          <div className="space-y-8">
+{/* STEP 5 – ✨ REBUILT */}
+{currentStep === 5 && (
+  <div className="space-y-8">
 
-            {/* 1 · Top Section: Language & Tone */}
-            <div className="grid gap-8 md:grid-cols-2">
-              {/* Language */}
-              <div>
-                <label className="font-semibold block mb-2">Language</label>
-                <select name="language" value={form.language} onChange={handleChange}
-                        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3">
-                  <option value="english">English</option>
-                  <option value="spanish">Spanish</option>
-                  <option value="french">French</option>
-                  <option value="german">German</option>
-                  <option value="portuguese">Portuguese</option>
-                </select>
-              </div>
-              {/* Tone preset */}
-              <div>
-                <label className="font-semibold block mb-2">Tone preset</label>
-                <Listbox value={form.tonePreset} onChange={v => setForm(f => ({ ...f, tonePreset: v }))}>
-                  <div className="relative">
-                    <Listbox.Button className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3 text-left">
-                      {form.tonePreset}
-                    </Listbox.Button>
-                    <Listbox.Options className="absolute z-20 mt-1 max-h-60 w-full overflow-auto
-                                       rounded-md bg-white dark:bg-gray-800 shadow-lg">
-                      {TONE_PRESETS.map(tp => (
-                        <Listbox.Option key={tp} value={tp}
-                          className={({ active }) => `px-4 py-2 cursor-pointer
-                            ${active ? 'bg-blue-100 dark:bg-blue-900' : ''}`}>
-                          {tp}
-                        </Listbox.Option>
-                      ))}
-                    </Listbox.Options>
-                  </div>
-                </Listbox>
-              </div>
-            </div>
+    {/* 1 · Top Section: Language & Tone */}
+    <div className="grid gap-8 md:grid-cols-2">
+      {/* Language */}
+      <div>
+        <label className="font-semibold block mb-2">Language</label>
+        <select
+          name="language"
+          value={form.language}
+          onChange={handleChange}
+          className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3"
+        >
+          <option value="english">English</option>
+          <option value="spanish">Spanish</option>
+          <option value="french">French</option>
+          <option value="german">German</option>
+          <option value="portuguese">Portuguese</option>
+        </select>
+      </div>
 
-            {/* 2 · Length */}
-            <div>
-              <label className="font-semibold block mb-2">Length (words)</label>
-              <input type="range" min={MIN_LEN} max={MAX_LEN} step={STEP_LEN}
-                     name="lengthWords" value={form.lengthWords} onChange={handleChange}
-                     className="w-full" />
-              <p className="text-sm mt-1">{form.lengthWords} words target</p>
-            </div>
+      {/* Tone preset */}
+      <div>
+        <label className="font-semibold block mb-2">Tone preset</label>
+        <Listbox
+          value={form.tonePreset}
+          onChange={v => setForm(f => ({ ...f, tonePreset: v }))}
+        >
+          <div className="relative">
+          <Listbox.Button className="relative w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg pl-4 pr-10 py-3 text-left">
+          <span className="block truncate">{form.tonePreset}</span>
+          {/* Flecha posicionada */}
+          <HiMiniChevronDown
+            className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+          />
+          </Listbox.Button> 
+            <Listbox.Options className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 shadow-lg">
+              {TONE_PRESETS.map(tp => (
+                <Listbox.Option
+                  key={tp}
+                  value={tp}
+                  className={({ active }) =>
+                    `px-4 py-2 cursor-pointer ${
+                      active ? 'bg-blue-100 dark:bg-blue-900' : ''
+                    }`
+                  }
+                >
+                  {tp}
+                </Listbox.Option>
+              ))}
+            </Listbox.Options>
+          </div>
+        </Listbox>
+      </div>
+    </div>
 
-            {/* 3 · Opening Style & Formality */}
-            <div className="grid gap-8 md:grid-cols-2">
-              {/* Opening style */}
-              <div>
-                <label className="font-semibold block mb-2">Opening style</label>
-                <div className="flex flex-wrap gap-2">
-                  {OPENING_STYLES.map(os => (
-                    <button key={os} type="button"
-                      className={`px-3 py-1 rounded-full border
-                        ${form.openingStyle === os
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700'}`}
-                      onClick={() => setForm(f => ({ ...f, openingStyle: os }))}>
-                      {os}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Formality pills */}
-              <div>
-                <label className="font-semibold block mb-2">Formality</label>
-                <div className="flex flex-wrap gap-2">
-                {['Casual', 'Neutral', 'Formal'].map((lvl, idx) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        className={`px-3 py-1 rounded-full border
-                        ${form.formality === idx
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700'}`}
-                        onClick={() =>
-                          setForm(f => ({
-                            ...f,
-                            // Aquí casteamos idx a 0|1|2
-                            formality: idx as 0 | 1 | 2
-                          }))
-                        }
-                      >
-                        {lvl}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            </div>
+    {/* 2 · Length */}
+    <div>
+      <label className="font-semibold block mb-2">Length (words)</label>
+      <input
+        type="range"
+        min={MIN_LEN}
+        max={MAX_LEN}
+        step={STEP_LEN}
+        name="lengthWords"
+        value={form.lengthWords}
+        onChange={handleChange}
+        className="w-full"
+      />
+      <p className="text-sm mt-1">{form.lengthWords} words target</p>
+    </div>
 
-            {/* 4 · Voice Row: Perspective & Toggles */}
-            <div className="grid gap-8 md:grid-cols-2">
-              
-              {/* Toggles */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">Include anecdote</span>
-                  <Switch checked={form.includeAnecdote} onChange={() => toggleBoolean('includeAnecdote')}
-                    className={`${form.includeAnecdote ? 'bg-blue-600' : 'bg-gray-400'}
-                            relative inline-flex h-6 w-11 items-center rounded-full`}>
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition
-                      ${form.includeAnecdote ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </Switch>
-                </div>
-                <p className="text-sm text-gray-500">Adds a short personal anecdote.</p>
+ {/* 3 · Opening & Writing Style | Formality & Toggles */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
+  {/* Opening style */}
+  <div>
+    <label className="font-semibold block mb-2">Opening style</label>
+    <div className="flex flex-wrap gap-2">
+      {OPENING_STYLES.map(os => (
+        <button
+          key={os}
+          type="button"
+          className={`px-3 py-1 rounded-full border ${
+            form.openingStyle === os
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700'
+          }`}
+          onClick={() => setForm(f => ({ ...f, openingStyle: os }))}
+        >
+          {os}
+        </button>
+      ))}
+    </div>
+  </div>
 
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">Use metrics / numbers</span>
-                  <Switch checked={form.includeMetrics} onChange={() => toggleBoolean('includeMetrics')}
-                    className={`${form.includeMetrics ? 'bg-blue-600' : 'bg-gray-400'}
-                            relative inline-flex h-6 w-11 items-center rounded-full`}>
-                    <span className={`inline-block h-4 w-4 rounded-full bg-white transition
-                      ${form.includeMetrics ? 'translate-x-6' : 'translate-x-1'}`} />
-                  </Switch>
-                </div>
-                <p className="text-sm text-gray-500">Highlights quantifiable achievements.</p>
-              </div>
-            </div>
+ {/* Formality */}
+<div>
+  <label className="font-semibold block mb-2">Formality</label>
+  <div className="flex flex-wrap gap-2">
+    {['Formal', 'Neutral', 'Casual'].map((lvl, idx) => (
+      <button
+        key={lvl}
+        type="button"
+        className={`px-3 py-1 rounded-full border ${
+          form.formality === idx
+            ? 'bg-purple-700 text-white'
+            : 'bg-gray-100 dark:bg-gray-700'
+        }`}
+        onClick={() =>
+          setForm(f => ({ ...f, formality: idx as 0 | 1 | 2 }))
+        }
+      >
+          {lvl}
+        </button>
+      ))}
+    </div>
+  </div>
 
-            {/* 5 · Writing style & Grammar-check */}
-            <div className="grid gap-8 md:grid-cols-2">
-              {/* Writing style chips */}
-              <div>
-                <label className="font-semibold block mb-2">Writing style</label>
-                <div className="flex flex-wrap gap-2">
-                  {WRITING_STYLE_TAGS.map(tag => (
-                    <button key={tag} type="button"
-                      onClick={() => toggleStyleTag(tag)}
-                      className={`px-3 py-1 rounded-full border
-                        ${form.styleTags.includes(tag)
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700'}`}>
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-            </div>
+{/* Writing style */}
+<div>
+  <label className="font-semibold block mb-2">Writing style</label>
+  <div className="flex flex-wrap gap-2">
+    {WRITING_STYLE_TAGS.map(tag => (
+      <button
+        key={tag}
+        type="button"
+        className={`px-3 py-1 rounded-full border ${
+          form.writingStyle === tag
+            ? 'bg-green-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700'
+        }`}
+        onClick={() => setForm(f => ({ ...f, writingStyle: tag }))}
+      >
+          {tag}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {/* Toggles */}
+  <div className="space-y-4">
+    <div className="flex items-center">
+      <Switch
+        checked={form.includeAnecdote}
+        onChange={() => toggleBoolean('includeAnecdote')}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+          form.includeAnecdote ? 'bg-blue-600' : 'bg-gray-400'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+            form.includeAnecdote ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </Switch>
+      <span className="ml-3 font-semibold">Include anecdote</span>
+    </div>
+    <p className="ml-14 text-sm text-gray-500">
+      Adds a short personal anecdote.
+    </p>
+
+    <div className="flex items-center">
+      <Switch
+        checked={form.includeMetrics}
+        onChange={() => toggleBoolean('includeMetrics')}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full ${
+          form.includeMetrics ? 'bg-blue-600' : 'bg-gray-400'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+            form.includeMetrics ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </Switch>
+      <span className="ml-3 font-semibold">Use metrics / numbers</span>
+    </div>
+    <p className="ml-14 text-sm text-gray-500">
+      Highlights quantifiable achievements.
+    </p>
+  </div>
+</div>
+
 
 
 
