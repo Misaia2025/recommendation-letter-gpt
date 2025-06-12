@@ -19,36 +19,40 @@
     /*  CONSTANTS & ENUM-LIKE MAPS                                         */
     /* ------------------------------------------------------------------ */
     
-    // 💌 Letter types (unchanged)
-    type LetterGroup = 'education' | 'professional' | 'personal';
-    const LETTER_TYPES: { value: string; label: string; group: LetterGroup }[] = [
-      { value: 'academic',   label: '🎓 Academic (University)', group: 'education' },
-      { value: 'scholarship',label: '🧑‍🏫 Scholarships & Aid',  group: 'education' },
-      { value: 'medical',    label: '🧑‍⚕️ Medical Residency',   group: 'education' },
-      { value: 'internship', label: '📋 Internship',            group: 'professional' },
-      { value: 'job',        label: '💼 Job / Employment',       group: 'professional' },
-      { value: 'volunteer',  label: '🤝 Volunteer / NGO',        group: 'professional' },
-      { value: 'immigration',label: '🛂 Immigration / Visa',     group: 'personal' },
-      { value: 'tenant',     label: '🏠 Tenant / Landlord',      group: 'personal' },
-      { value: 'personal',   label: '👤 Personal / Character',   group: 'personal' },
-    ];
-    
-    // Colour helpers for the grid buttons
-    const GROUP_BG: Record<LetterGroup, string> = {
-      education:    'bg-blue-50 dark:bg-blue-900/40',
-      professional: 'bg-green-50 dark:bg-green-900/40',
-      personal:     'bg-gray-50 dark:bg-gray-800/50',
-    };
-    const GROUP_BORDER: Record<LetterGroup, string> = {
-      education:    'border-blue-600',
-      professional: 'border-green-600',
-      personal:     'border-gray-600',
-    };
-    const GROUP_RING: Record<LetterGroup, string> = {
-      education:    'ring-blue-400/70',
-      professional: 'ring-green-400/70',
-      personal:     'ring-gray-400/70',
-    };
+ // 💌 Letter types (unchanged)
+type LetterGroup = 'education' | 'professional' | 'personal';
+
+const LETTER_TYPES: { value: string; label: string; group: LetterGroup }[] = [
+  { value: 'academic',   label: '🎓 Academic (University)', group: 'education' },
+  { value: 'scholarship',label: '🧑‍🏫 Scholarships & Aid',  group: 'education' },
+  { value: 'medical',    label: '🧑‍⚕️ Medical Residency',   group: 'education' },
+  { value: 'internship', label: '📋 Internship',            group: 'professional' },
+  { value: 'job',        label: '💼 Job / Employment',       group: 'professional' },
+  { value: 'volunteer',  label: '🤝 Volunteer / NGO',        group: 'professional' },
+  { value: 'immigration',label: '🛂 Immigration / Visa',     group: 'personal' },
+  { value: 'tenant',     label: '🏠 Tenant / Landlord',      group: 'personal' },
+  { value: 'personal',   label: '👤 Personal / Character',   group: 'personal' },
+];
+
+// 🎨 Enhanced contrast styles for each group
+const GROUP_BG: Record<LetterGroup, string> = {
+  education:    'bg-blue-50 text-gray-900 shadow-sm dark:bg-blue-900/40 dark:text-white',
+  professional: 'bg-green-50 text-gray-900 shadow-sm dark:bg-green-900/40 dark:text-white',
+  personal:     'bg-gray-50 text-gray-900 shadow-sm dark:bg-gray-800/50 dark:text-white',
+};
+
+const GROUP_BORDER: Record<LetterGroup, string> = {
+  education:    'border-blue-600',
+  professional: 'border-green-600',
+  personal:     'border-gray-600',
+};
+
+const GROUP_RING: Record<LetterGroup, string> = {
+  education:    'ring-blue-400/70',
+  professional: 'ring-green-400/70',
+  personal:     'ring-gray-400/70',
+};
+
     
     // Step-5 preset lists
     const TONE_PRESETS = ['Neutral', 'Enthusiastic', 'Persuasive', 'Objective'] as const;
@@ -103,7 +107,7 @@
         relationship: 'manager', relationshipOther: '', knownTime: 'lt6m',
     
         /* Step 3 – Applicant */
-        applicantFirstName: '', applicantLastName: '', applicantPosition: '',
+        applicantFirstName: '', applicantLastName: '', applicantSex: '', applicantPosition: '',
         skillsAndQualities: '',
     
         /* Step 4 – Recipient / Conditional */
@@ -217,9 +221,11 @@
       /* ------------------ Wizard navigation (Step 1-4 remain unchanged) */
       const isStep1Ok = Boolean(form.letterType);
       const isStep2Ok = Boolean(
-        form.recName && form.recLastName && form.recTitle && form.recOrg &&
+        form.recName &&
+        form.recLastName &&
         (form.relationship !== 'other' || form.relationshipOther.trim())
       );
+      
       const isStep3Ok = Boolean(form.applicantFirstName.trim() && form.applicantLastName.trim());
     
       const isStepComplete = () => {
@@ -234,8 +240,12 @@
       const handleNext = () => {
         setTouched({});
         if (!isStepComplete()) {           // focus invalid fields
-          if (currentStep === 2) setTouched({ recName:true, recLastName:true, recTitle:true, recOrg:true,
-            relationshipOther: form.relationship === 'other' });
+          if (currentStep === 2) setTouched({
+            recName: true,
+            recLastName: true,
+            relationshipOther: form.relationship === 'other'
+          });
+          
           if (currentStep === 3) setTouched({ applicantFirstName:true, applicantLastName:true });
           return;
         }
@@ -246,25 +256,47 @@
       /* ------------------ Prompt builder (NEW – reads expanded form) */
       const buildPrompt = (s3Key?: string) => {
         const out: string[] = [];
-        const langTxt = form.language === 'spanish' ? 'Spanish' : 'English';
+        const langTxt = {
+          english: 'English',
+          spanish: 'Spanish',
+          french: 'French',
+          german: 'German',
+          portuguese: 'Portuguese'
+        }[form.language] || 'English';        
         out.push(`Write a ${form.letterType} recommendation letter in ${langTxt}.`);
     
+        // Recommender line
         // Recommender line
         const recFull = `${form.recName} ${form.recLastName}`.trim();
         const relationText = form.relationship === 'other'
           ? form.relationshipOther.trim()
           : ({
-              manager:'Manager / Supervisor', professor:'Professor / Academic Advisor',
-              colleague:'Coworker / Colleague', mentor:'Mentor / Coach',
+              manager:   'Manager / Supervisor',
+              professor: 'Professor / Academic Advisor',
+              colleague: 'Coworker / Colleague',
+              mentor:    'Mentor / Coach',
             } as Record<string,string>)[form.relationship] ?? 'Colleague';
-        out.push(`Recommender: ${recFull}, ${form.recTitle} at ${form.recOrg}` +
-          (form.recAddress ? `, Address: ${form.recAddress}` : '') +
-          `, Relationship: ${relationText}, known for ${KNOWN_TIMES[form.knownTime]}.`);
+
+        // === BLOQUE NUEVO ===
+        let recLine = `Recommender: ${recFull}`;
+        if (form.recTitle)   recLine += `, ${form.recTitle}`;
+        if (form.recOrg)     recLine += ` at ${form.recOrg}`;
+        if (form.recAddress) recLine += `, Address: ${form.recAddress}`;
+        recLine += `, Relationship: ${relationText}, known for ${KNOWN_TIMES[form.knownTime]}.`;
+        out.push(recLine);
+        // === FIN BLOQUE NUEVO ===
+
+        // A continuación continúa el resto de tu prompt…
+
     
         // Applicant
         const applicantFull = `${form.applicantFirstName} ${form.applicantLastName}`.trim();
-        out.push(`Applicant: ${applicantFull}` +
-          (form.applicantPosition ? `, applying for ${form.applicantPosition}` : '') + '.');
+        let applicantLine = `Applicant: ${applicantFull}`;
+        if (form.applicantSex) applicantLine += ` (${form.applicantSex})`;
+        if (form.applicantPosition) applicantLine += `, applying for ${form.applicantPosition}`;
+        applicantLine += '.';
+        out.push(applicantLine);
+
     
         if (form.skillsAndQualities.trim())
           out.push(`Key skills, qualities & achievements: ${form.skillsAndQualities.trim()}.`);
@@ -501,43 +533,38 @@
       </div>
     </div>
 
-    {/* Title + Organization */}
-    <div className="md:grid md:grid-cols-2 md:gap-8">
-      <div>
-        <label htmlFor="recTitle" className="block text-lg font-semibold mb-2">
-          Title / Position <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="recTitle"
-          name="recTitle"
-          value={form.recTitle}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          placeholder="e.g., Senior Manager"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-        {touched.recTitle && !form.recTitle && (
-          <p className="text-red-500 text-sm mt-1">Please enter the title.</p>
-        )}
+      {/* Title + Organization (now optional) */}
+      <div className="md:grid md:grid-cols-2 md:gap-8">
+        <div>
+          <label htmlFor="recTitle" className="block text-lg font-semibold mb-2">
+            Title / Position <span className="text-sm text-gray-400">(optional)</span>
+          </label>
+          <input
+            id="recTitle"
+            name="recTitle"
+            value={form.recTitle}
+            onChange={handleChange}
+            placeholder="e.g., Senior Manager"
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+          />
+          {/* removed required-field indicator and validation message */}
+        </div>
+        <div>
+          <label htmlFor="recOrg" className="block text-lg font-semibold mb-2">
+            Organization <span className="text-sm text-gray-400">(optional)</span>
+          </label>
+          <input
+            id="recOrg"
+            name="recOrg"
+            value={form.recOrg}
+            onChange={handleChange}
+            placeholder="e.g., Acme Corp"
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+          />
+          {/* removed required-field indicator and validation message */}
+        </div>
       </div>
-      <div>
-        <label htmlFor="recOrg" className="block text-lg font-semibold mb-2">
-          Organization <span className="text-red-500">*</span>
-        </label>
-        <input
-          id="recOrg"
-          name="recOrg"
-          value={form.recOrg}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          placeholder="e.g., Acme Corp"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-        {touched.recOrg && !form.recOrg && (
-          <p className="text-red-500 text-sm mt-1">Please enter the organization.</p>
-        )}
-      </div>
-    </div>
+
 
   
     {/* Relationship + Known time */}
@@ -608,9 +635,9 @@
 
 {currentStep === 3 && (
   <div className="grid gap-8">
-    {/* 3 · Applicant name */}
-    <div className="md:grid md:grid-cols-2 md:gap-8">
-      <div>
+    {/* 3 · Applicant name + Sex */}
+    <div className="md:grid md:grid-cols-12 md:gap-6">
+      <div className="md:col-span-5">
         <label
           htmlFor="applicantFirstName"
           className="block text-lg font-semibold mb-2"
@@ -631,7 +658,7 @@
         )}
       </div>
 
-      <div>
+      <div className="md:col-span-5">
         <label
           htmlFor="applicantLastName"
           className="block text-lg font-semibold mb-2"
@@ -651,129 +678,154 @@
           <p className="text-red-500 text-sm mt-1">Required.</p>
         )}
       </div>
-    </div>
 
-    {/* 4 · Position & Conditional fields side-by-side */}
-    <div className="grid md:grid-cols-2 md:gap-8 gap-8">
-      {/* Position / Program Applying To */}
-      <div
-        className={`${
-          ['scholarship','immigration','tenant','medical'].includes(form.letterType)
-            ? ''
-            : 'md:col-span-2'
-        }`}
-      >
+      <div className="md:col-span-2">
+        <label htmlFor="applicantSex" className="block text-lg font-semibold mb-2">
+          Sex <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="applicantSex"
+          name="applicantSex"
+          value={form.applicantSex}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3 text-gray-900 dark:text-white"
+        >
+          <option value="">—</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+        {touched.applicantSex && !form.applicantSex && (
+          <p className="text-red-500 text-sm mt-1">Required.</p>
+        )}
+      </div>
+    </div>  
+
+      {/* 4 · Position & Conditional fields side-by-side */}
+      <div className="grid md:grid-cols-2 md:gap-8 gap-8">
+        {/* Position / Program Applying To */}
+        <div
+          className={`${
+            ['scholarship','immigration','tenant','medical'].includes(form.letterType)
+              ? ''
+              : 'md:col-span-2'
+          }`}
+        >
         <label
           htmlFor="applicantPosition"
           className="block text-lg font-semibold mb-2"
         >
-          Position / Program Applying To (optional)
+          Position / Program Applying To <span className="text-sm text-gray-400">(optional)</span>
         </label>
-        <input
-          id="applicantPosition"
-          name="applicantPosition"
-          value={form.applicantPosition}
-          onChange={handleChange}
-          placeholder="e.g., MBA Program"
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-        />
-      </div>
 
-      {/* Conditional fields */}
-      {form.letterType === 'scholarship' && (
-        <div>
-          <label
-            htmlFor="gpa"
-            className="block text-lg font-semibold mb-2"
-          >
-            Applicant GPA (optional)
-          </label>
           <input
-            id="gpa"
-            name="gpa"
-            value={form.gpa}
+            id="applicantPosition"
+            name="applicantPosition"
+            value={form.applicantPosition}
             onChange={handleChange}
-            placeholder="e.g., 3.9 / 4.0"
+            placeholder="e.g., MBA Program"
             className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
           />
         </div>
-      )}
-      {form.letterType === 'immigration' && (
-        <div>
-          <label
-            htmlFor="visaType"
-            className="block text-lg font-semibold mb-2"
-          >
-            Visa Type (optional)
-          </label>
-          <input
-            id="visaType"
-            name="visaType"
-            value={form.visaType}
-            onChange={handleChange}
-            placeholder="e.g., H-1B"
-            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-          />
-        </div>
-      )}
-      {form.letterType === 'tenant' && (
-        <div>
-          <label
-            htmlFor="rentalAddress"
-            className="block text-lg font-semibold mb-2"
-          >
-            Rental Address (optional)
-          </label>
-          <input
-            id="rentalAddress"
-            name="rentalAddress"
-            value={form.rentalAddress}
-            onChange={handleChange}
-            placeholder="e.g., 123 Main St, City"
-            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-          />
-        </div>
-      )}
-      {form.letterType === 'medical' && (
-        <div>
+
+        {/* Conditional fields */}
+        {form.letterType === 'scholarship' && (
+          <div>
+            <label
+              htmlFor="gpa"
+              className="block text-lg font-semibold mb-2"
+            >
+              Applicant GPA (optional)
+            </label>
+            <input
+              id="gpa"
+              name="gpa"
+              value={form.gpa}
+              onChange={handleChange}
+              placeholder="e.g., 3.9 / 4.0"
+              className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+            />
+          </div>
+        )}
+        {form.letterType === 'immigration' && (
+          <div>
+            <label
+              htmlFor="visaType"
+              className="block text-lg font-semibold mb-2"
+            >
+              Visa Type (optional)
+            </label>
+            <input
+              id="visaType"
+              name="visaType"
+              value={form.visaType}
+              onChange={handleChange}
+              placeholder="e.g., H-1B"
+              className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+            />
+          </div>
+        )}
+        {form.letterType === 'tenant' && (
+          <div>
+            <label
+              htmlFor="rentalAddress"
+              className="block text-lg font-semibold mb-2"
+            >
+              Rental Address (optional)
+            </label>
+            <input
+              id="rentalAddress"
+              name="rentalAddress"
+              value={form.rentalAddress}
+              onChange={handleChange}
+              placeholder="e.g., 123 Main St, City"
+              className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+            />
+          </div>
+        )}
+        {form.letterType === 'medical' && (
+          <div>
           <label
             htmlFor="residencySpecialty"
             className="block text-lg font-semibold mb-2"
           >
-            Residency Specialty (optional)
+            Residency Specialty <span className="text-sm text-gray-400">(optional)</span>
           </label>
-          <input
-            id="residencySpecialty"
-            name="residencySpecialty"
-            value={form.residencySpecialty}
-            onChange={handleChange}
-            placeholder="e.g., Internal Medicine"
-            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-          />
-        </div>
-      )}
-    </div>
 
-    {/* 5 · Skills & Qualities */}
-    <div>
+            <input
+              id="residencySpecialty"
+              name="residencySpecialty"
+              value={form.residencySpecialty}
+              onChange={handleChange}
+              placeholder="e.g., Internal Medicine"
+              className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* 5 · Skills & Qualities */}
+      <div>
       <label
         htmlFor="skillsAndQualities"
         className="block text-lg font-semibold mb-2"
       >
-        Skills / Qualities / Achievements (optional)
+        Skills / Qualities / Achievements <span className="text-sm text-gray-400">(optional)</span>
       </label>
-      <textarea
-        id="skillsAndQualities"
-        name="skillsAndQualities"
-        rows={4}
-        value={form.skillsAndQualities}
-        onChange={handleChange}
-        placeholder="e.g., Leadership; Project management; Award-winning research"
-        className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
-      />
+
+        <textarea
+          id="skillsAndQualities"
+          name="skillsAndQualities"
+          rows={4}
+          value={form.skillsAndQualities}
+          onChange={handleChange}
+          placeholder="e.g., Leadership; Project management; Award-winning research"
+          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
+        />
+      </div>
     </div>
-  </div>
-)}
+  )}
 
 {/* STEP 5 – ✨ REBUILT */}
 {currentStep === 4 && (

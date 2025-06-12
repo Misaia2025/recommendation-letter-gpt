@@ -181,8 +181,8 @@ span.flatpickr-weekday,
 }
 .range-xl::-webkit-slider-thumb {
   -webkit-appearance: none;
-  height: 50px;           /* ← aumentamos de 20px a 24px */
-  width: 50px;            /* ← aumentamos de 20px a 24px */
+  height: 70px;           /* ← aumentamos de 20px a 24px */
+  width: 70px;            /* ← aumentamos de 20px a 24px */
   background: #3b82f6;
   border-radius: 9999px;
   margin-top: -8px;       /* ← ajustamos de -6px a -8px para centrar */
@@ -195,8 +195,8 @@ span.flatpickr-weekday,
   border-radius: 9999px;
 }
 .range-xl::-moz-range-thumb {
-  height: 50px;           /* ← aumentamos de 20px a 24px */
-  width: 50px;            /* ← aumentamos de 20px a 24px */
+  height: 70px;           /* ← aumentamos de 20px a 24px */
+  width: 70px;            /* ← aumentamos de 20px a 24px */
   background: #3b82f6;
   border-radius: 9999px;
   cursor: pointer;
