@@ -166,3 +166,38 @@ span.flatpickr-weekday,
   display: none !important;
 }
 
+/* Slider más grueso y thumb más grande */
+.range-xl {
+  /* altura total del track */
+  height: 8px;
+  /* quitar outline por defecto */
+  outline: none;
+}
+/* WebKit (Chrome, Safari) */
+.range-xl::-webkit-slider-runnable-track {
+  height: 8px;
+  background: #e5e7eb; /* gray-200 */
+  border-radius: 9999px;
+}
+.range-xl::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 50px;           /* ← aumentamos de 20px a 24px */
+  width: 50px;            /* ← aumentamos de 20px a 24px */
+  background: #3b82f6;
+  border-radius: 9999px;
+  margin-top: -8px;       /* ← ajustamos de -6px a -8px para centrar */
+  cursor: pointer;
+}
+/* Firefox */
+.range-xl::-moz-range-track {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 9999px;
+}
+.range-xl::-moz-range-thumb {
+  height: 50px;           /* ← aumentamos de 20px a 24px */
+  width: 50px;            /* ← aumentamos de 20px a 24px */
+  background: #3b82f6;
+  border-radius: 9999px;
+  cursor: pointer;
+}

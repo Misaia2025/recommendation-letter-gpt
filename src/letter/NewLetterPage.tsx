@@ -745,7 +745,9 @@
 {/* STEP 5 – ✨ REBUILT */}
 {currentStep === 5 && (
   <div className="space-y-8">
-
+  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-10 mb-10">
+  Advanced Options
+</h1>
     {/* 1 · Top Section: Language & Tone */}
     <div className="grid gap-8 md:grid-cols-2">
       {/* Language */}
@@ -816,7 +818,7 @@
       <p className="text-sm mt-1">{form.lengthWords} words target</p>
     </div>
 
- {/* 3 · Opening & Writing Style | Formality & Toggles */}
+{/* 3 · Opening & Writing Style | Formality */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
   {/* Opening style */}
   <div>
@@ -839,52 +841,104 @@
     </div>
   </div>
 
- {/* Formality */}
-<div>
-  <label className="font-semibold block mb-2">Formality</label>
-  <div className="flex flex-wrap gap-2">
-    {['Formal', 'Neutral', 'Casual'].map((lvl, idx) => (
-      <button
-        key={lvl}
-        type="button"
-        className={`px-3 py-1 rounded-full border ${
-          form.formality === idx
-            ? 'bg-purple-700 text-white'
-            : 'bg-gray-100 dark:bg-gray-700'
-        }`}
-        onClick={() =>
-          setForm(f => ({ ...f, formality: idx as 0 | 1 | 2 }))
-        }
-      >
+  {/* Formality */}
+  <div>
+    <label className="font-semibold block mb-2">Formality</label>
+    <div className="flex flex-wrap gap-2">
+      {['Formal', 'Neutral', 'Casual'].map((lvl, idx) => (
+        <button
+          key={lvl}
+          type="button"
+          className={`px-3 py-1 rounded-full border ${
+            form.formality === idx
+              ? 'bg-purple-700 text-white'
+              : 'bg-gray-100 dark:bg-gray-700'
+          }`}
+          onClick={() =>
+            setForm(f => ({ ...f, formality: idx as 0 | 1 | 2 }))
+          }
+        >
           {lvl}
         </button>
       ))}
     </div>
   </div>
 
-{/* Writing style */}
-<div>
-  <label className="font-semibold block mb-2">Writing style</label>
-  <div className="flex flex-wrap gap-2">
-    {WRITING_STYLE_TAGS.map(tag => (
-      <button
-        key={tag}
-        type="button"
-        className={`px-3 py-1 rounded-full border ${
-          form.writingStyle === tag
-            ? 'bg-green-600 text-white'
-            : 'bg-gray-100 dark:bg-gray-700'
-        }`}
-        onClick={() => setForm(f => ({ ...f, writingStyle: tag }))}
-      >
+  {/* Writing style */}
+  <div>
+    <label className="font-semibold block mb-2">Writing style</label>
+    <div className="flex flex-wrap gap-2">
+      {WRITING_STYLE_TAGS.map(tag => (
+        <button
+          key={tag}
+          type="button"
+          className={`px-3 py-1 rounded-full border ${
+            form.writingStyle === tag
+              ? 'bg-green-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700'
+          }`}
+          onClick={() => setForm(f => ({ ...f, writingStyle: tag }))}
+        >
           {tag}
         </button>
       ))}
     </div>
   </div>
+</div>
 
-  {/* Toggles */}
-  <div className="space-y-4">
+{/* 7 · Attachment & Examples */}
+<div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+  {/* Upload UI */}
+  <div className="col-span-full md:col-span-2">
+    <label className="block font-semibold mb-2">
+      Upload Supporting Document (optional) e.g., CV, job posting, scholarship instructions
+    </label>
+    <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onClick={() => fileInputRef.current?.click()}
+      className={`flex items-center justify-center p-6 border-2 border-dashed rounded-lg
+        cursor-pointer transition ${
+          dragActive
+            ? 'border-blue-400 bg-blue-50'
+            : 'border-gray-300 bg-white dark:bg-gray-700'
+        }`}
+    >
+      {!form.file ? (
+        <p className="text-gray-500 dark:text-gray-400">
+          Drag & drop PDF/DOCX, or click to browse
+        </p>
+      ) : (
+        <div className="flex items-center space-x-4">
+          <p>
+            {form.file.name} ({(form.file.size / 1048576).toFixed(2)} MB)
+          </p>
+          <button
+            type="button"
+            onClick={handleFileRemove}
+            className="text-red-500 hover:underline"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </div>
+    {fileError && <p className="text-red-500 text-sm mt-1">{fileError}</p>}
+  </div>
+</div>
+
+{/* 8 · Toggles side by side below upload box */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+  {/* Include anecdote */}
+  <div>
     <div className="flex items-center">
       <Switch
         checked={form.includeAnecdote}
@@ -899,12 +953,17 @@
           }`}
         />
       </Switch>
-      <span className="ml-3 font-semibold">Include anecdote</span>
+      <span className="ml-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+        Include anecdote
+      </span>
     </div>
-    <p className="ml-14 text-sm text-gray-500">
+    <p className="ml-14 mt-1 text-base text-gray-500 dark:text-gray-300">
       Adds a short personal anecdote.
     </p>
+  </div>
 
+  {/* Use metrics / numbers */}
+  <div>
     <div className="flex items-center">
       <Switch
         checked={form.includeMetrics}
@@ -919,51 +978,24 @@
           }`}
         />
       </Switch>
-      <span className="ml-3 font-semibold">Use metrics / numbers</span>
+      <span className="ml-3 text-lg font-semibold text-gray-900 dark:text-gray-100">
+        Use metrics / numbers
+      </span>
     </div>
-    <p className="ml-14 text-sm text-gray-500">
+    <p className="ml-14 mt-1 text-base text-gray-500 dark:text-gray-300">
       Highlights quantifiable achievements.
     </p>
   </div>
 </div>
 
-
-
-
-            {/* 7 · Attachment & Examples */}
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              {/* Upload UI */}
-              <div className="col-span-full md:col-span-2">
-                <label className="block font-semibold mb-2">Upload Supporting Document (optional) e.g., CV, job posting, scholarship instructions</label>
-                <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-                     onClick={() => fileInputRef.current?.click()}
-                     className={`flex items-center justify-center p-6 border-2 border-dashed rounded-lg
-                       cursor-pointer transition
-                       ${dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white dark:bg-gray-700'}`}>
-                  {!form.file ? (
-                    <p className="text-gray-500 dark:text-gray-400">Drag & drop PDF/DOCX, or click to browse</p>
-                  ) : (
-                    <div className="flex items-center space-x-4">
-                      <p>{form.file.name} ({(form.file.size / 1048576).toFixed(2)} MB)</p>
-                      <button type="button" onClick={handleFileRemove}
-                              className="text-red-500 hover:underline">Remove</button>
-                    </div>
-                  )}
-                  <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx"
-                         onChange={handleFileChange} className="hidden" />
-                </div>
-                {fileError && <p className="text-red-500 text-sm mt-1">{fileError}</p>}
-              </div>
-              
-            </div>
-
+            
             {/* Navigation */}
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 mt-8">
               <button type="button" onClick={handlePrev}
                       className="flex-1 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600">Previous</button>
               <button type="submit" disabled={isGenerating}
                       className="flex-1 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50">
-                {isGenerating ? 'Generating…' : 'Generate Letter'}
+                {isGenerating ? 'Generating…' : 'Generate Letter ✨'}
               </button>
             </div>
           </div>
@@ -994,7 +1026,7 @@
                     }}
                     className="flex-1 py-3 bg-gray-500 text-white rounded-xl font-semibold hover:bg-gray-600"
                   >
-                    🠔  Advanced Options
+                    🠔 Advanced Options
                   </button>
 
                   {/* Copy to Clipboard */}
