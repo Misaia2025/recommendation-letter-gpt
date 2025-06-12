@@ -836,20 +836,7 @@
 
             {/* 4 · Voice Row: Perspective & Toggles */}
             <div className="grid gap-8 md:grid-cols-2">
-              {/* Perspective */}
-              <fieldset>
-                <legend className="font-semibold mb-2">Perspective</legend>
-                <div className="space-y-2">
-                  {PERSPECTIVES.map(p => (
-                    <label key={p.id} className="flex items-center space-x-3">
-                      <input type="radio" name="perspective" value={p.id}
-                        checked={form.perspective === p.id}
-                        onChange={handleChange} />
-                      <span>{p.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              
               {/* Toggles */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
