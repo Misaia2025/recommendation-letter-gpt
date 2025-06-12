@@ -141,7 +141,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
       useEffect(() => {
         if (showConfetti) {
           // Apaga el confeti después de 3 segundos
-          const timer = setTimeout(() => setShowConfetti(false), 5000);
+          const timer = setTimeout(() => setShowConfetti(false), 4000);
           return () => clearTimeout(timer);
         }
       }, [showConfetti]);
@@ -262,7 +262,8 @@ const GROUP_RING: Record<LetterGroup, string> = {
           french: 'French',
           german: 'German',
           portuguese: 'Portuguese'
-        }[form.language] || 'English';        
+        }[form.language] || 'English';
+        
         out.push(`Write a ${form.letterType} recommendation letter in ${langTxt}.`);
     
         // Recommender line
