@@ -66,6 +66,18 @@
     /* ------------------------------------------------------------------ */
     /*  MAIN COMPONENT                                                     */
     /* ------------------------------------------------------------------ */
+    // Función para envolver en rojo los textos entre corchetes
+    function renderWithPlaceholders(text: string) {
+      // Separar el texto en trozos: partes normales y placeholders
+      const parts = text.split(/(\[[^\]]+\])/g);
+      return parts.map((part, i) =>
+        // Si coincide con [algo], lo pinta de rojo. Si no, tal cual.
+        /\[[^\]]+\]/.test(part)
+          ? <span key={i} className="text-red-600">{part}</span>
+          : <span key={i}>{part}</span>
+      );
+    }
+
     
     export default function NewLetterPage() {
       /* ——————————————————————————————————— Refs & Auth */
@@ -76,7 +88,7 @@
       const scrollToTop = () => mainRef.current?.scrollIntoView({ behavior: 'smooth' });
     
       /* ——————————————————————————————————— Wizard state */
-      const totalSteps = 3;
+      const totalSteps = 4;
       const [currentStep, setCurrentStep] = useState(1);
       const [touched, setTouched] = useState<Record<string, boolean>>({});
       const [copied, setCopied] = useState(false);
@@ -322,15 +334,48 @@
       };
     
       /* ------------------ Word export (unchanged) */
-      const handleDownloadDocx = async () => {
-        if (!draft) return;
-        const paragraphs = draft.split('\n').map(l => new Paragraph({
-          children:[new TextRun(l)], spacing:{after:200}, alignment:AlignmentType.JUSTIFIED,
-        }));
-        const doc = new Document({ sections:[{ children:paragraphs }] });
-        const blob = await Packer.toBlob(doc); saveAs(blob, 'Recommendation_Letter.docx');
-      };
-    
+     const handleDownloadDocx = async () => {
+  if (!draft) return;
+
+  // 1) Dividir el texto en líneas
+  const lines = draft.split('\n');
+
+  // 2) Para cada línea, construir trozos (runs) que sean
+  //    - rojos si están entre corchetes [ ], o
+  //    - negros si son texto normal
+  const paragraphs = lines.map(line => {
+    // Separa la línea en fragmentos, conservando los [placeholders]
+    const parts = line.split(/(\[[^\]]+\])/g);
+
+    // Para cada fragmento, creamos un TextRun con color
+    const runs = parts.map(text => {
+      if (/^\[[^\]]+\]$/.test(text)) {
+        // Si el fragmento es exactamente [algo], lo ponemos en rojo
+        return new TextRun({
+          text,
+          color: "FF0000",  // código HEX para rojo
+          bold: true,       // opcional: negrita para mayor énfasis
+        });
+      } else {
+        // Texto normal, color por defecto (negro)
+        return new TextRun({ text });
+      }
+    });
+
+    // Convertimos estos runs en un párrafo
+    return new Paragraph({
+      children: runs,
+      spacing: { after: 200 },
+      alignment: AlignmentType.JUSTIFIED,
+    });
+  });
+
+  // 3) Empaquetar el documento y disparar la descarga
+  const doc = new Document({ sections: [{ children: paragraphs }] });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, 'Recommendation_Letter.docx');
+};
+
       /* ------------------------------------------------------------------ */
       /*  RENDER                                                             */
       /* ------------------------------------------------------------------ */
@@ -1041,10 +1086,13 @@
                   </button>
 
                 </div>
+                <p className="text-center text-gray-700 dark:text-gray-300 mb-4">
+                  Now just replace the <span className="text-red-600 font-semibold">red placeholders</span> with your own information, and you’re all set!
+                </p>
                 <div className="whitespace-pre-wrap p-6 bg-gray-100 dark:bg-gray-700
                 rounded-lg text-justify max-w-4xl w-full mx-auto">
-                  {draft}
-                </div>
+                  {renderWithPlaceholders(draft)}
+                  </div>
 
                 <button onClick={()=>{setDraft('');setCurrentStep(1);setForm(initialForm);scrollToTop();}}
                         className="w-full py-4 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white
