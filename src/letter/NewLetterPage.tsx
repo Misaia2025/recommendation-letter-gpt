@@ -6,9 +6,9 @@
       useState, useRef, useEffect, ChangeEvent, FormEvent, FocusEvent,
     } from 'react';    
     import { useAuth } from 'wasp/client/auth';
-    import { generateGptResponse, createFile } from 'wasp/client/operations';
+    import { generateGptResponse } from 'wasp/client/operations';
     import { BsCheckCircleFill } from 'react-icons/bs';
-    import { HiMiniDocumentText, HiMiniSparkles, HiMiniArrowLeft, HiMiniChevronDown } from 'react-icons/hi2';
+    import { HiMiniSparkles, HiMiniArrowLeft, HiMiniChevronDown, HiMiniDocumentText } from 'react-icons/hi2';
     import { Switch, Listbox } from '@headlessui/react';
     import Confetti from 'react-confetti';
     import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
@@ -63,10 +63,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
     ] as const;
     const WRITING_STYLE_TAGS = ['Executive', 'Bullet-points','Storytelling' ] as const;
     
-    // S3 vars (unchanged)
-    const S3_BUCKET = import.meta.env.VITE_S3_BUCKET as string;
-    const S3_REGION = import.meta.env.VITE_S3_REGION as string;
-    
+        
     /* ------------------------------------------------------------------ */
     /*  MAIN COMPONENT                                                     */
     /* ------------------------------------------------------------------ */
@@ -88,7 +85,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
       const { data: user } = useAuth();
       const isGuest = !user;
       const mainRef = useRef<HTMLDivElement>(null);
-      const fileInputRef = useRef<HTMLInputElement>(null);
+      
       const scrollToTop = () => mainRef.current?.scrollIntoView({ behavior: 'smooth' });
     
       /* ——————————————————————————————————— Wizard state */
@@ -130,7 +127,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
         
     
         /* Attachment */
-        file: null as File | null,
+        supportingText: '',        // ← new field
       };
       const [form, setForm] = useState(initialForm);
     
@@ -148,8 +145,8 @@ const GROUP_RING: Record<LetterGroup, string> = {
       
       const [errorMsg, setErrorMsg] = useState('');
       const [successMsg, setSuccessMsg] = useState('');
-      const [fileError, setFileError] = useState('');
-      const [dragActive, setDragActive] = useState(false);
+      
+      
     
       /* ——————————————————————————————————— MISC CONSTANTS */
       const KNOWN_TIMES: Record<string, string> = {
@@ -194,29 +191,6 @@ const GROUP_RING: Record<LetterGroup, string> = {
         }));
       };
     
-      /* ------------------ File support (unchanged except setForm path) */
-      const validateFile = (file: File) => {
-        const okTypes = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ];
-        if (!okTypes.includes(file.type)) { setFileError('Only PDF or DOCX up to 5 MB'); return false; }
-        if (file.size > 5 * 1024 * 1024) { setFileError('File > 5 MB'); return false; }
-        setFileError(''); return true;
-      };
-      const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] || null;
-        if (file && validateFile(file)) setForm(f => ({ ...f, file }));
-      };
-      const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setDragActive(true); };
-      const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setDragActive(false); };
-      const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault(); setDragActive(false);
-        const file = e.dataTransfer.files[0];
-        if (file && validateFile(file)) setForm(f => ({ ...f, file }));
-      };
-      const handleFileRemove = () => setForm(f => ({ ...f, file: null }));
     
       /* ------------------ Wizard navigation (Step 1-4 remain unchanged) */
       const isStep1Ok = Boolean(form.letterType);
@@ -254,7 +228,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
       const handlePrev = () => { setTouched({}); if (currentStep > 1) setCurrentStep(s => s - 1); };
     
       /* ------------------ Prompt builder (NEW – reads expanded form) */
-      const buildPrompt = (s3Key?: string) => {
+      const buildPrompt = () => {
         const out: string[] = [];
         const langTxt = {
           english: 'English',
@@ -307,10 +281,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
         if (form.visaType) out.push(`Visa type: ${form.visaType}.`);
         if (form.rentalAddress) out.push(`Rental property: ${form.rentalAddress}.`);
         if (form.residencySpecialty) out.push(`Residency specialty: ${form.residencySpecialty}.`);
-    
-        // Attachment
-        if (s3Key)
-          out.push(`Supporting document: https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${s3Key}`);
+
     
         /* ✨ New personalisation parameters */
         out.push(
@@ -322,7 +293,11 @@ const GROUP_RING: Record<LetterGroup, string> = {
         if (form.includeAnecdote) out.push('Include a short anecdote.');
         if (form.includeMetrics) out.push('Use specific metrics or numbers where relevant.');
         out.push(`Creativity/temperature: ${form.creativity}.`);
-    
+
+        // Incluye el texto del textarea como contexto adicional
+        if (form.supportingText.trim()) {
+          out.push(`Additional context: ${form.supportingText.trim()}.`);
+        }
         // Grammar proof
         if (form.grammarCheck) out.push('After composing, run a grammar-check pass.');
     
@@ -334,29 +309,12 @@ const GROUP_RING: Record<LetterGroup, string> = {
         e.preventDefault();
         if (isGuest && localStorage.getItem('guestUsed')) { window.location.href = '/login'; return; }
     
-        setErrorMsg(''); setFileError(''); setIsGenerating(true);
-        let s3Key: string | undefined;
-    
-        // a) upload file if present
-        if (form.file) {
-          try {
-            const { s3UploadUrl, s3UploadFields } = await createFile({
-              fileName: form.file.name,
-              fileType: form.file.type as any,
-            });
-            const fd = new FormData();
-            Object.entries(s3UploadFields).forEach(([k,v]) => fd.append(k, v));
-            fd.append('file', form.file);
-            const upRes = await fetch(s3UploadUrl, { method:'POST', body: fd });
-            if (!upRes.ok) throw new Error('upload');
-            s3Key = s3UploadFields.key;
-          } catch { setFileError('Upload failed'); setIsGenerating(false); return; }
-        }
-    
+        setErrorMsg(''); setIsGenerating(true);
+  
+      try {
         // b) build prompt & call GPT
-        const prompt = buildPrompt(s3Key);
-        try {
-          const res: any = await generateGptResponse({ prompt });
+      const prompt = buildPrompt();
+      const res: any = await generateGptResponse({ prompt });
           setDraft(res.text || ''); if (isGuest) localStorage.setItem('guestUsed', '1');
           setShowConfetti(true); setSuccessMsg('Your letter is ready!'); setTimeout(()=>setSuccessMsg(''),3e3);
         } catch (err:any) {
@@ -972,57 +930,32 @@ const GROUP_RING: Record<LetterGroup, string> = {
   </div>
 </div>
 
-{/* 7 · Attachment & Examples */}
+{/* 7 · Supporting Document Text */}
 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-  {/* Upload UI */}
   <div className="col-span-full md:col-span-2">
-  <label className="block font-semibold mb-2">
-  Upload Supporting Document (optional){' '}
-  <span className="text-sm italic font-normal">
-    e.g., CV o Resume, job posting, scholarship instructions
-  </span>
-</label>
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onClick={() => fileInputRef.current?.click()}
-      className={`flex items-center justify-center p-6 border-2 border-dashed rounded-lg
-        cursor-pointer transition ${
-          dragActive
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 bg-white dark:bg-gray-700'
-        }`}
-    >
-      {!form.file ? (
-        <p className="text-gray-500 dark:text-gray-400">
-          Drag & drop PDF/DOCX, or click to browse
-        </p>
-      ) : (
-        <div className="flex items-center space-x-4">
-          <p>
-            {form.file.name} ({(form.file.size / 1048576).toFixed(2)} MB)
-          </p>
-          <button
-            type="button"
-            onClick={handleFileRemove}
-            className="text-red-500 hover:underline"
-          >
-            Remove
-          </button>
-        </div>
-      )}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.doc,.docx"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-    </div>
-    {fileError && <p className="text-red-500 text-sm mt-1">{fileError}</p>}
+    <label htmlFor="supportingText" className="block font-semibold mb-2">
+      Add Supporting Document (optional){' '}
+      <span className="text-sm italic font-normal">
+        e.g., CV o Resume, job posting, scholarship instructions, etc.
+      </span>
+    </label>
+    <textarea
+      id="supportingText"
+      name="supportingText"
+      value={form.supportingText}
+      onChange={handleChange}
+      placeholder="Paste any relevant info here…"
+      rows={3}
+      maxLength={10000}
+      className="w-full p-3 border-2 border-dashed rounded-lg
+                 bg-white dark:bg-gray-700 resize-none"
+    />
+    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+      This text will be included as a reference document for your letter.
+    </p>
   </div>
 </div>
+
 
 {/* 8 · Toggles side by side below upload box */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
