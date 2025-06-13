@@ -6,7 +6,7 @@
       useState, useRef, useEffect, ChangeEvent, FormEvent, FocusEvent,
     } from 'react';    
     import { useAuth } from 'wasp/client/auth';
-    import { generateGptResponse } from 'wasp/client/operations';
+    import { generateGptResponse, createFile } from 'wasp/client/operations';
     import { BsCheckCircleFill } from 'react-icons/bs';
     import { HiMiniSparkles, HiMiniArrowLeft, HiMiniChevronDown, HiMiniDocumentText } from 'react-icons/hi2';
     import { Switch, Listbox } from '@headlessui/react';
@@ -155,10 +155,13 @@ const GROUP_RING: Record<LetterGroup, string> = {
         
     
         /* Attachment */
-        supportingText: '',
-        includeComparison: false,        // ← new field
+        supportingText: '',        // ← new field
       };
       const [form, setForm] = useState(initialForm);
+      const fileInputRef = useRef<HTMLInputElement>(null);
+      const [cvFile,     setCvFile] = useState<File | null>(null);
+      const [cvText,     setCvText] = useState<string>('');  // Contenido leíble del archivo
+
     
       /* ——————————————————————————————————— Letter generation */
       const [draft, setDraft] = useState('');
@@ -205,6 +208,22 @@ const GROUP_RING: Record<LetterGroup, string> = {
         const { name } = e.target;
         setTouched(t => ({ ...t, [name]: true }));
       };
+
+      const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setCvFile(file);
+      
+        const reader = new FileReader();
+        reader.onload = () => setCvText(reader.result as string);
+        reader.readAsText(file);
+      };
+      
+      const handleRemoveFile = () => {
+        setCvFile(null);
+        setCvText('');
+      };
+      
     
       // ——— Toggle helpers
       const toggleBoolean = (key: keyof typeof initialForm) =>
@@ -629,6 +648,11 @@ const GROUP_RING: Record<LetterGroup, string> = {
         out.push(`Creativity/temperature: ${form.creativity}.`);
 
         // Incluye el texto del textarea como contexto adicional
+        // Incluye el contenido del CV como contexto adicional
+        if (cvText.trim()) {
+          out.push(`Applicant CV/Resume content: ${cvText.trim()}.`);
+        }
+
         if (form.supportingText.trim()) {
           out.push(`Additional context: ${form.supportingText.trim()}.`);
         }
@@ -1285,27 +1309,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
 
 {/* 3 · Opening & Writing Style | Formality */}
 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8">
-  {/* Opening style */}
-  <div>
-    <label className="font-semibold block mb-2">Opening style</label>
-    <div className="flex flex-wrap gap-2">
-      {OPENING_STYLES.map(os => (
-        <button
-          key={os}
-          type="button"
-          className={`px-3 py-1 rounded-full border ${
-            form.openingStyle === os
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700'
-          }`}
-          onClick={() => setForm(f => ({ ...f, openingStyle: os }))}
-        >
-          {os}
-        </button>
-      ))}
-    </div>
-  </div>
-
+ 
   {/* Formality */}
   <div>
     <label className="font-semibold block mb-2">Formality</label>
@@ -1351,13 +1355,51 @@ const GROUP_RING: Record<LetterGroup, string> = {
   </div>
 </div>
 
+{/* ── Upload Applicant’s CV/Resume ── */}
+<div className="col-span-full mb-6">
+  <label className="block font-semibold mb-2">
+    Upload Applicant’s CV/Resume <span className="text-sm text-gray-400">(optional)</span>
+  </label>
+
+  {!cvFile ? (
+    <>
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+      >
+        Upload Applicant’s CV/Resume
+      </button>
+      <input
+        type="file"
+        accept=".pdf,.doc,.docx,.txt"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+      />
+    </>
+  ) : (
+    <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+      <span className="truncate">{cvFile.name}</span>
+      <button
+        type="button"
+        onClick={handleRemoveFile}
+        className="text-red-600 hover:underline"
+      >
+        Remove
+      </button>
+    </div>
+  )}
+</div>
+
+
 {/* 7 · Supporting Document Text */}
 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
   <div className="col-span-full md:col-span-2">
     <label htmlFor="supportingText" className="block font-semibold mb-2">
-      Add Supporting Document (optional){' '}
+      Add more context (optional){' '}
       <span className="text-sm italic font-normal">
-        e.g., CV o Resume, job posting, scholarship instructions, etc.
+        e.g., job posting, scholarship instructions, visa application, etc.
       </span>
     </label>
     <textarea
@@ -1367,7 +1409,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
       onChange={handleChange}
       placeholder="Paste any relevant info here…"
       rows={3}
-      maxLength={5000}
+      maxLength={3900}
       className="w-full p-3 border-2 border-dashed rounded-lg
                  bg-white dark:bg-gray-700 resize-none"
     />
@@ -1504,7 +1546,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
                 <button onClick={()=>{setDraft('');setCurrentStep(1);setForm(initialForm);scrollToTop();}}
                         className="w-full py-4 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white
                                    rounded-xl font-semibold hover:bg-gray-400 dark:hover:bg-gray-500">
-                  🔄 Generate Another Letter
+                  🔄 Generate A New Letter
                 </button>
               </div>)}
           </main>
