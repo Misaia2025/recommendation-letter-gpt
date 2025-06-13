@@ -847,20 +847,23 @@ const GROUP_RING: Record<LetterGroup, string> = {
                      : <></>}
             </h1>
     
-           {/* Stepper (hidden on the final step) */}
-            {!draft && currentStep < totalSteps && (
-              <>
-                <div className="mt-4 text-lg font-medium text-center">
-                  Step {currentStep} of {totalSteps}
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full">
-                  <div
-                    className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600"
-                    style={{ width:`${(currentStep/totalSteps)*100}%` }}
-                  />
-                </div>
-              </>
+            {/* Indicador de paso (texto siempre visible) */}
+            {!draft && (
+              <div className="mt-4 text-lg font-medium text-center">
+                Step {currentStep} of {totalSteps}
+              </div>
             )}
+            {/* Barra de progreso (sólo en steps 1-3) */}
+            {!draft && currentStep < totalSteps && (
+              <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full">
+                <div
+                  className="h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600"
+                  style={{ width: `${(currentStep / totalSteps) * 100}%` }}
+                />
+              </div>
+            )}
+
+
 
     
             {/* Helper sentence Step 1 */}
@@ -1235,10 +1238,10 @@ const GROUP_RING: Record<LetterGroup, string> = {
     </div>
   )}
 
-{/* STEP 5 – ✨ REBUILT */}
+{/* STEP 4 – ✨ REBUILT */}
 {currentStep === 4 && (
   <div className="space-y-8">
-  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-16 mb-16">
+  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-16 mb-8">
   
 </h1>
     {/* 1 · Top Section: Language & Tone */}
@@ -1370,9 +1373,9 @@ const GROUP_RING: Record<LetterGroup, string> = {
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="w-full py-3 bg-blue-700 hover:bg-blue-800 text-white rounded-lg transition"
+        className="w-full py-3 border-2 border-blue-600 bg-gray-100 text-black rounded-lg transition hover:bg-gray-200"
       >
-        Upload Applicant’s CV/Resume
+        Click to Upload Applicant’s CV/Resume <span className="text-sm text-gray-400">(optional)</span>
       </button>
       <input
         type="file"
@@ -1397,11 +1400,12 @@ const GROUP_RING: Record<LetterGroup, string> = {
 </div>
 
 
+
 {/* 7 · Supporting Document Text */}
 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
   <div className="col-span-full md:col-span-2">
     <label htmlFor="supportingText" className="block font-semibold mb-2">
-      Add more context (optional){' '}
+      Add more context {' '} <span className="text-sm text-gray-400">(optional)</span> {' '}{' '}
       <span className="text-sm italic font-normal">
         e.g., job posting, scholarship instructions, visa application, etc.
       </span>
