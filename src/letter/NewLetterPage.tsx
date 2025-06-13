@@ -839,7 +839,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
     
             {/* Heading */}
             <h1 className="text-4xl md:text-5xl font-extrabold text-center">
-              {draft ? <>Letter <span className="text-yellow-500">Generated</span></>
+              {draft ? <>Advanced Options 📊</>
                      : <>Generate <span className="text-yellow-500">Recommendation Letter</span></>}
             </h1>
     
@@ -1234,8 +1234,8 @@ const GROUP_RING: Record<LetterGroup, string> = {
 {/* STEP 5 – ✨ REBUILT */}
 {currentStep === 4 && (
   <div className="space-y-8">
-  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-12 mb-12">
-  Advanced Options 📊
+  <h1 className="text-2xl md:text-2xl font-semibold text-center mt-14 mb-14">
+  
 </h1>
     {/* 1 · Top Section: Language & Tone */}
     <div className="grid gap-8 md:grid-cols-2">
@@ -1366,7 +1366,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+        className="w-full py-3 bg-blue-600 hover:bg-blue-800 text-white rounded-lg transition"
       >
         Upload Applicant’s CV/Resume
       </button>
