@@ -13,6 +13,20 @@
     import Confetti from 'react-confetti';
     import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
     import { saveAs } from 'file-saver';
+
+    // ─────────── Helpers para mejorar buildPrompt() ───────────
+    /** Extrae porcentajes escritos como “NN%” */
+
+    /** Elige al azar un elemento de un array */
+    function pick<T>(arr: T[]): T {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    /** Genera entero aleatorio entre min y max (incluidos) */
+    function randRange(min: number, max: number): number {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+// ──────────────────────────────────────────────────────────────
+
     
     
     /* ------------------------------------------------------------------ */
@@ -64,6 +78,20 @@ const GROUP_RING: Record<LetterGroup, string> = {
     const WRITING_STYLE_TAGS = ['Executive', 'Bullet-points','Storytelling' ] as const;
     
         
+      // ─────────── Añade esto justo DEBAJO de tus imports ───────────
+      /**
+       * Extrae todos los porcentajes (%)
+       * de un texto dado y los devuelve como números.
+       */
+      function extractPercents(text: string): number[] {
+        const matches = text.match(/(\d{1,3})\s*%/g) || [];
+        return matches.map(m => parseInt(m.replace('%', ''), 10));
+      }
+      // ────────────────────────────────────────────────────────────────
+
+
+
+
     /* ------------------------------------------------------------------ */
     /*  MAIN COMPONENT                                                     */
     /* ------------------------------------------------------------------ */
@@ -127,7 +155,8 @@ const GROUP_RING: Record<LetterGroup, string> = {
         
     
         /* Attachment */
-        supportingText: '',        // ← new field
+        supportingText: '',
+        includeComparison: false,        // ← new field
       };
       const [form, setForm] = useState(initialForm);
     
@@ -246,10 +275,10 @@ const GROUP_RING: Record<LetterGroup, string> = {
         const relationText = form.relationship === 'other'
           ? form.relationshipOther.trim()
           : ({
-              manager:   'Manager / Supervisor',
-              professor: 'Professor / Academic Advisor',
-              colleague: 'Coworker / Colleague',
-              mentor:    'Mentor / Coach',
+              manager:   'Supervisor',
+              professor: 'Professor',
+              colleague: 'Colleague',
+              mentor:    'Mentor',
             } as Record<string,string>)[form.relationship] ?? 'Colleague';
 
         // === BLOQUE NUEVO ===
@@ -273,14 +302,16 @@ const GROUP_RING: Record<LetterGroup, string> = {
         out.push(applicantLine);
 
     
-        if (form.skillsAndQualities.trim())
-          out.push(`Key skills, qualities & achievements: ${form.skillsAndQualities.trim()}.`);
-    
-        // Conditional Step 4 values (unchanged)
-        if (form.gpa) out.push(`Applicant GPA: ${form.gpa}.`);
-        if (form.visaType) out.push(`Visa type: ${form.visaType}.`);
-        if (form.rentalAddress) out.push(`Rental property: ${form.rentalAddress}.`);
-        if (form.residencySpecialty) out.push(`Residency specialty: ${form.residencySpecialty}.`);
+        if (form.skillsAndQualities.trim()) {
+          const traits = form.skillsAndQualities
+            .split(/[,;]+/)
+            .map(s => s.trim())
+            .filter(Boolean);
+          out.push(
+            `In particular, they demonstrated ${traits.join(', ')}, which translated into tangible results.`
+          );
+        }
+        
 
     
         /* ✨ New personalisation parameters */
@@ -290,8 +321,311 @@ const GROUP_RING: Record<LetterGroup, string> = {
           `Perspective: ${form.perspective === 'first' ? 'first-person (I)' : 'institutional (We)'}.`
         );
         if (form.styleTags.length) out.push(`Writing style: ${form.styleTags.join(', ')}.`);
-        if (form.includeAnecdote) out.push('Include a short anecdote.');
-        if (form.includeMetrics) out.push('Use specific metrics or numbers where relevant.');
+        // 1) Localiza y elimina esta línea dentro de buildPrompt():
+//    if (form.includeAnecdote) out.push('Include a short anecdote.');
+
+      // 2) Justo en su lugar, pega este bloque completo:
+
+        if (form.includeAnecdote) {
+          const anecdoteMap: Record<string, string[]> = {
+            academic: [
+              'how the candidate led a research project that surpassed expectations',
+              'the moment they tutored classmates, boosting class grades',
+              'their presentation at the university conference that earned applause',
+              'how they organized study groups and improved peer performance',
+              'their creative solution to a complex academic challenge'
+            ],
+            scholarship: [
+              'how they wrote a compelling essay that moved the selection committee',
+              'their initiative in securing small grants to fund their studies',
+              'the way they mentored underclassmen despite a busy schedule',
+              'their outreach to community organizations for scholarship support',
+              'how they balanced extracurriculars while maintaining top grades'
+            ],
+            medical: [
+              'an occasion where they comforted a nervous patient with empathy',
+              'the time they identified a critical diagnosis under pressure',
+              'how they coordinated care between multiple specialists',
+              'their quick thinking during a sudden emergency on rounds',
+              'the compassion they showed in follow-up patient visits'
+            ],
+            internship: [
+              'when they streamlined an internal process, saving hours of work',
+              'their ability to learn a new tool on the spot and teach it to peers',
+              'how they went beyond the brief to contribute to a key project',
+              'the positive feedback they received from their mentor',
+              'their clear, confident presentation of findings to the team'
+            ],
+            job: [
+              'how they led a project that boosted team efficiency by example',
+              'the time they mediated a conflict to a successful resolution',
+              'their innovative idea that cut costs without sacrificing quality',
+              'how they mentored a junior colleague to exceed their goals',
+              'a client testimonial praising their professionalism'
+            ],
+            volunteer: [
+              'when they organized a community clean-up that mobilized 50+ volunteers',
+              'how they led a charity drive that exceeded its fundraising target',
+              'their empathy working with underprivileged families',
+              'the leadership they showed in disaster-relief efforts',
+              'a workshop they ran that left a lasting impact on participants'
+            ],
+            immigration: [
+              'when they overcame a language barrier to help a fellow immigrant',
+              'their advocacy for allowing newcomers to access services',
+              'how they volunteered to lead cultural-orientation sessions',
+              'their persistence in navigating complex visa procedures',
+              'the support they provided to new arrivals settling in the city'
+            ],
+            tenant: [
+              'when they coordinated repairs without burdening the landlord',
+              'their respectful communication with neighbors during a refurbishment',
+              'how they kept the property in pristine condition',
+              'their flawless record of on-time rent payments',
+              'the community garden initiative they spearheaded'
+            ],
+            personal: [
+              'when they overcame a personal challenge with resilience',
+              'their daily habit of volunteering time to mentor others',
+              'how they went out of their way to help a stranger in need',
+              'the creative solution they applied to a tricky everyday problem',
+              'their commitment to continuous self-improvement'
+            ],
+            default: [
+              'a moment that showcases their dedication and impact',
+              'an example of their leadership under pressure',
+              'how they collaborated effectively in a team setting',
+              'their creative approach to solving a complex problem',
+              'a time they exceeded expectations in their role'
+            ],
+          };
+          const templates = anecdoteMap[form.letterType] || anecdoteMap.default;
+          out.push(`Include a short anecdote about ${pick(templates)}.`);
+        }
+        
+        // Comparaciones tipo “top X%” para reforzar el elogio
+        if (true) { // o condicional interno si lo prefieres
+          const compMap: Record<string, string[]> = {
+            academic:   [`one of the top ${randRange(1,5)}% of students I've taught`],
+            medical:    [`among the top ${randRange(1,5)}% of residents I've supervised`],
+            internship: [`one of the most proactive interns I've had`],
+            job:        [`among the top ${randRange(1,5)}% of professionals I've managed`],
+            volunteer:  [`one of the most dedicated volunteers in our program`],
+            immigration:[`among the ${randRange(1,5)}% strongest applicants I've endorsed`],
+            tenant:     [`with a lease renewal rate above ${randRange(80,100)}%`],
+            personal:   [`one of the most dependable individuals I've known`],
+            default:    [`a standout individual in their cohort`],
+          };
+          const list = compMap[form.letterType] || compMap.default;
+          out.push(`I consider them ${pick(list)}.`);
+        }
+
+
+        if (form.includeMetrics) {
+          // Extraemos porcentajes de los campos opcionales del usuario
+          const userMetrics = [
+            ...extractPercents(form.skillsAndQualities),
+            ...extractPercents(form.supportingText),
+          ];
+          // Si el usuario proporcionó al menos un %, lo usamos; si no, generamos uno aleatorio (10–60)
+          const percent = userMetrics.length
+            ? userMetrics[Math.floor(Math.random() * userMetrics.length)]
+            : Math.floor(Math.random() * 51) + 10;
+        
+          // Definimos verbos y métricas contextualizadas por tipo de carta
+          let verbs: string[] = [];
+          let metricTemplates: ((n: number) => string)[] = [];
+        
+          switch (form.letterType) {
+            case 'academic':
+            case 'scholarship':
+              verbs = [
+                'increasing', 'boosting', 'enhancing', 'elevating', 'magnifying',
+                'amplifying', 'strengthening', 'uplifting', 'reinforcing', 'augmenting'
+              ];
+              metricTemplates = [
+                n => `GPA by ${n}%`,
+                n => `publication count by ${n}%`,
+                n => `research grants by ${n}%`,
+                n => `citation index by ${n}%`,
+                n => `conference presentations by ${n}%`,
+                n => `honors received by ${n}%`,
+                n => `scholarship funding by ${n}%`,
+                n => `peer reviews by ${n}%`,
+                n => `project completion rate by ${n}%`,
+                n => `academic collaborations by ${n}%`
+              ];
+              break;
+        
+            case 'medical':
+              verbs = [
+                'improving', 'optimizing', 'elevating', 'advancing', 'refining',
+                'strengthening', 'streamlining', 'accelerating', 'enhancing', 'boosting'
+              ];
+              metricTemplates = [
+                n => `patient satisfaction scores by ${n}%`,
+                n => `clinical procedure success rate by ${n}%`,
+                n => `rounds conducted by ${n}%`,
+                n => `case resolution speed by ${n}%`,
+                n => `treatment adherence by ${n}%`,
+                n => `bed occupancy efficiency by ${n}%`,
+                n => `lab test throughput by ${n}%`,
+                n => `follow-up compliance by ${n}%`,
+                n => `surgical precision by ${n}%`,
+                n => `reduction in readmission rates by ${n}%`
+              ];
+              break;
+        
+            case 'internship':
+              verbs = [
+                'accelerating', 'streamlining', 'enhancing', 'expediting', 'facilitating',
+                'improving', 'optimizing', 'tightening', 'boosting', 'expanding'
+              ];
+              metricTemplates = [
+                n => `project delivery speed by ${n}%`,
+                n => `team collaboration efficiency by ${n}%`,
+                n => `task completion rate by ${n}%`,
+                n => `learning curve reduction by ${n}%`,
+                n => `report turnaround by ${n}%`,
+                n => `mentorship satisfaction by ${n}%`,
+                n => `presentation quality by ${n}%`,
+                n => `documentation accuracy by ${n}%`,
+                n => `tool adoption rate by ${n}%`,
+                n => `peer feedback scores by ${n}%`
+              ];
+              break;
+        
+            case 'job':
+            case 'professional':
+              verbs = [
+                'driving', 'maximizing', 'optimizing', 'leading', 'spearheading',
+                'propelling', 'elevating', 'expanding', 'enhancing', 'boosting'
+              ];
+              metricTemplates = [
+                n => `revenue by ${n}%`,
+                n => `sales conversion by ${n}%`,
+                n => `customer retention by ${n}%`,
+                n => `market share by ${n}%`,
+                n => `profit margins by ${n}%`,
+                n => `operational uptime by ${n}%`,
+                n => `client satisfaction by ${n}%`,
+                n => `team productivity by ${n}%`,
+                n => `budget utilization by ${n}%`,
+                n => `new account growth by ${n}%`
+              ];
+              break;
+        
+            case 'volunteer':
+            case 'ngo':
+              verbs = [
+                'increasing', 'expanding', 'amplifying', 'broadening', 'multiplying',
+                'extending', 'strengthening', 'scaling', 'boosting', 'enhancing'
+              ];
+              metricTemplates = [
+                n => `volunteer hours by ${n}%`,
+                n => `community reach by ${n}%`,
+                n => `funds raised by ${n}%`,
+                n => `events organized by ${n}%`,
+                n => `beneficiaries served by ${n}%`,
+                n => `partnership growth by ${n}%`,
+                n => `awareness campaigns by ${n}%`,
+                n => `donor engagement by ${n}%`,
+                n => `resource distribution by ${n}%`,
+                n => `training sessions by ${n}%`
+              ];
+              break;
+        
+            case 'immigration':
+              verbs = [
+                'facilitating', 'streamlining', 'expediting', 'accelerating', 'optimizing',
+                'enhancing', 'simplifying', 'refining', 'boosting', 'improving'
+              ];
+              metricTemplates = [
+                n => `visa approval rate by ${n}%`,
+                n => `application processing time reduction by ${n}%`,
+                n => `case handling speed by ${n}%`,
+                n => `documentation accuracy by ${n}%`,
+                n => `interview success by ${n}%`,
+                n => `support response rate by ${n}%`,
+                n => `compliance rate by ${n}%`,
+                n => `policy adherence by ${n}%`,
+                n => `client satisfaction by ${n}%`,
+                n => `error rate reduction by ${n}%`
+              ];
+              break;
+        
+            case 'tenant':
+            case 'landlord':
+              verbs = [
+                'maintaining', 'ensuring', 'demonstrating', 'achieving', 'upholding',
+                'exceeding', 'preserving', 'protecting', 'sustaining', 'guaranteeing'
+              ];
+              metricTemplates = [
+                n => `on-time payments by ${n}%`,
+                n => `property upkeep satisfaction by ${n}%`,
+                n => `lease renewal rate by ${n}%`,
+                n => `maintenance request resolution by ${n}%`,
+                n => `tenant retention by ${n}%`,
+                n => `inspection pass rate by ${n}%`,
+                n => `noise complaint reduction by ${n}%`,
+                n => `cleanliness scores by ${n}%`,
+                n => `community engagement by ${n}%`,
+                n => `property value growth by ${n}%`
+              ];
+              break;
+        
+            case 'personal':
+            default:
+              verbs = [
+                'enhancing', 'improving', 'boosting', 'uplifting', 'strengthening',
+                'elevating', 'maximizing', 'refining', 'expanding', 'fostering'
+              ];
+              metricTemplates = [
+                n => `overall performance by ${n}%`,
+                n => `personal growth by ${n}%`,
+                n => `project impact by ${n}%`,
+                n => `skill proficiency by ${n}%`,
+                n => `initiative uptake by ${n}%`,
+                n => `goal attainment by ${n}%`,
+                n => `efficiency improvements by ${n}%`,
+                n => `collaboration effectiveness by ${n}%`,
+                n => `creative output by ${n}%`,
+                n => `time management by ${n}%`
+              ];
+          }
+        
+          // Seleccionamos aleatoriamente un verbo y una plantilla
+          const verb = verbs[Math.floor(Math.random() * verbs.length)];
+          const template = metricTemplates[Math.floor(Math.random() * metricTemplates.length)];
+          const metricPhrase = template(percent);
+        
+          // Finalmente, añadimos la frase al prompt
+          out.push(
+            `Use specific metrics appropriate for a ${form.letterType} letter, such as ${verb} ${metricPhrase}.`
+          );
+        }
+
+        switch (form.letterType) {
+          case 'scholarship':
+            out.push(
+              'This profile aligns perfectly with the scholarship’s goal of fostering academic excellence and innovation.'
+            );
+            break;
+          case 'internship':
+            out.push(
+              `I am confident they will excel in the ${form.applicantPosition || 'internship'} due to their adaptability and drive.`
+            );
+            break;
+          case 'immigration':
+            out.push(
+              'I strongly urge you to grant them the requested visa, as they will be an asset to your community.'
+            );
+            break;
+          default:
+            // nada extra para otros tipos
+        }
+        
+
         out.push(`Creativity/temperature: ${form.creativity}.`);
 
         // Incluye el texto del textarea como contexto adicional
@@ -300,7 +634,88 @@ const GROUP_RING: Record<LetterGroup, string> = {
         }
         // Grammar proof
         if (form.grammarCheck) out.push('After composing, run a grammar-check pass.');
-    
+        const closings: Record<string, string[]> = {
+          default: [
+            'I highly recommend them without reservation.',
+            'Please feel free to contact me for any further details.',
+            'I am happy to provide additional information upon request.',
+            'I am confident they will be a valuable addition wherever they go.',
+            'Should you need any clarification, do not hesitate to reach out.'
+          ],
+          academic: [
+            'I enthusiastically recommend them for your program and stand by this recommendation.',
+            'Their academic promise is outstanding, and I am available to discuss further.',
+            'I have no doubt they will excel in your academic environment.',
+            'They would be an exceptional addition to your institution.',
+            'Please let me know if you require any additional insight into their qualifications.'
+          ],
+          scholarship: [
+            'I strongly endorse their application for this scholarship opportunity.',
+            'Their achievements make them an ideal candidate for your funding.',
+            'I am certain that investing in their education will yield great returns.',
+            'They fully deserve this scholarship, and I am available for further details.',
+            'Feel free to contact me for any additional information to support this application.'
+          ],
+          medical: [
+            'I wholeheartedly endorse their application to your residency program.',
+            'Their clinical skills and character make them an exemplary candidate.',
+            'I fully support their candidacy and can provide further insights on request.',
+            'They possess the qualities essential for a successful medical resident.',
+            'Please do not hesitate to contact me regarding any aspect of their application.'
+          ],
+          internship: [
+            'I confidently recommend them for this internship opportunity.',
+            'Their proactive attitude ensures they will add value from day one.',
+            'I believe they will quickly become an asset to your team.',
+            'They are well-prepared to meet the challenges of this role.',
+            'Please let me know if you would like any further examples of their work.'
+          ],
+          job: [
+            'I am delighted to recommend them for this position.',
+            'They have consistently exceeded expectations in their role.',
+            'I trust they will bring both skill and integrity to your organization.',
+            'They are an outstanding professional, and I fully endorse their candidacy.',
+            'Feel free to reach out if you need any further evidence of their qualifications.'
+          ],
+          volunteer: [
+            'I wholeheartedly recommend them for any volunteer role.',
+            'Their dedication and compassion set them apart in our community.',
+            'I am certain they will make a meaningful impact in your organization.',
+            'They have proven themselves as a reliable and caring volunteer.',
+            'Please contact me if you need more information on their community contributions.'
+          ],
+          ngo: [
+            'I strongly support their application to join your NGO efforts.',
+            'Their leadership and empathy are invaluable assets for social causes.',
+            'I am available to discuss how they can contribute to your mission.',
+            'They have a track record of driving positive change in communities.',
+            'Feel free to ask for any additional examples of their NGO work.'
+          ],
+          immigration: [
+            'I remain at your disposal for any further inquiries.',
+            'I strongly encourage you to approve their application.',
+            'They will be a valuable contributor to your community, without reservation.',
+            'Please consider them favorably; I can provide more details if needed.',
+            'I fully endorse their application and welcome any questions you may have.'
+          ],
+          tenant: [
+            'I would gladly lease to them again without hesitation.',
+            'They have maintained the property impeccably and paid on time.',
+            'I confidently recommend them as a tenant for any future lease.',
+            'They are responsible and respectful neighbors; you will not be disappointed.',
+            'Please feel free to contact me for any further information on their tenancy.'
+          ],
+          landlord: [
+            'I have no reservations in recommending them as a landlord.',
+            'Their management style has been professional and considerate.',
+            'They ensure tenants are well-supported and properties well-maintained.',
+            'I can attest to their fairness and reliability as a landlord.',
+            'Do not hesitate to reach out if you need more details about their management.'
+          ]
+        };
+        const closeList = closings[form.letterType] || closings.default;
+        out.push(pick(closeList));
+        
         return out.join(' ');
       };
     
@@ -313,6 +728,12 @@ const GROUP_RING: Record<LetterGroup, string> = {
   
       try {
         // b) build prompt & call GPT
+        // Función simple para extraer porcentajes del texto
+      function extractPercents(text: string): number[] {
+        const matches = text.match(/(\d{1,3})\s*%/g) || [];
+        return matches.map(m => parseInt(m.replace('%',''), 10));
+      }
+
       const prompt = buildPrompt();
       const res: any = await generateGptResponse({ prompt });
           setDraft(res.text || ''); if (isGuest) localStorage.setItem('guestUsed', '1');
@@ -539,10 +960,10 @@ const GROUP_RING: Record<LetterGroup, string> = {
           onChange={handleChange}
           className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3"
         >
-          <option value="manager">Manager / Supervisor</option>
-          <option value="professor">Professor / Academic Advisor</option>
-          <option value="colleague">Coworker / Colleague</option>
-          <option value="mentor">Mentor / Coach</option>
+          <option value="manager">Supervisor</option>
+          <option value="professor">Professor</option>
+          <option value="colleague">Colleague</option>
+          <option value="mentor">Mentor</option>
           <option value="other">Other</option>
         </select>
 
@@ -946,7 +1367,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
       onChange={handleChange}
       placeholder="Paste any relevant info here…"
       rows={3}
-      maxLength={10000}
+      maxLength={5000}
       className="w-full p-3 border-2 border-dashed rounded-lg
                  bg-white dark:bg-gray-700 resize-none"
     />
