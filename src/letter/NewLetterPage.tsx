@@ -839,10 +839,10 @@ const GROUP_RING: Record<LetterGroup, string> = {
     
             {/* Heading */}
             <h1 className="text-4xl md:text-5xl font-extrabold text-center">
-              {currentStep === 4 && <>Advanced Options 📊</>}
               {currentStep === 1 && <>Generate <span className="text-yellow-500">Recommendation Letter</span></>}
               {currentStep === 2 && <>Generate <span className="text-yellow-500">Recommendation Letter</span></>}
-              {currentStep === 3 && <>Generate <span className="text-yellow-500">Recommendation Letter</span></>}           
+              {currentStep === 3 && <>Generate <span className="text-yellow-500">Recommendation Letter</span></>}    
+              {!draft && currentStep === 4 && <>Advanced Options 📊</>}      
               {draft ? <>Letter <span className="text-yellow-500">Generated</span></>
                      : <></>}
             </h1>
