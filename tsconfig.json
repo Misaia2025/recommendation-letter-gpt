@@ -35,6 +35,7 @@
       // Source 1: https://www.typescriptlang.org/tsconfig#typeRoots
       // Source 2: https://github.com/testing-library/jest-dom/issues/546#issuecomment-1889884843
       "node_modules/@types"
+      
     ],
     "outDir": ".wasp/out/user"
   },

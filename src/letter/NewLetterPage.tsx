@@ -648,12 +648,17 @@ const GROUP_RING: Record<LetterGroup, string> = {
         out.push(`Creativity/temperature: ${form.creativity}.`);
 
         // Incluye el texto del textarea como contexto adicional
-        // Incluye el contenido del CV como contexto adicional
         if (cvText.trim()) {
-          out.push(`Applicant CV/Resume content: ${cvText.trim()}.`);
+          // Solo tomamos un fragmento, para no reventar el body
+          const snippet = cvText.trim().slice(0, 2000);
+          out.push(
+            `Applicant CV/Resume content (primeros 2000 caracteres): ` +
+            `${snippet}${cvText.length > 2000 ? '…' : ''}.`
+          );
         }
 
-        if (form.supportingText.trim()) {
+
+        if (form.supportingText.trim()) { 
           out.push(`Additional context: ${form.supportingText.trim()}.`);
         }
         // Grammar proof
