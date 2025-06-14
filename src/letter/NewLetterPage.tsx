@@ -13,6 +13,27 @@
     import Confetti from 'react-confetti';
     import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
     import { saveAs } from 'file-saver';
+    // ─── Etiquetas para el campo “Sex” ───
+    const SEX_LABELS: Record<string,string> = {
+      male:   'Male',
+      female: 'Female',
+      other:  'Sex (not specified)',
+    };
+    // ─── Etiquetas para el dropdown (UI) ───
+    const UI_SEX_LABELS: Record<string,string> = {
+      '':     '—',
+      male:   'Male',
+      female: 'Female',
+      other:  'Other',
+    };
+
+    // ─── Etiquetas para el prompt (GPT) ───
+    const PROMPT_SEX_LABELS: Record<string,string> = {
+      male:   'Male',
+      female: 'Female',
+      other:  'Sex (not specified)',
+    };
+
 
     // ─────────── Helpers para mejorar buildPrompt() ───────────
     /** Extrae porcentajes escritos como “NN%” */
@@ -158,9 +179,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
         supportingText: '',        // ← new field
       };
       const [form, setForm] = useState(initialForm);
-      const fileInputRef = useRef<HTMLInputElement>(null);
-      const [cvFile,     setCvFile] = useState<File | null>(null);
-      const [cvText,     setCvText] = useState<string>('');  // Contenido leíble del archivo
+
 
     
       /* ——————————————————————————————————— Letter generation */
@@ -209,20 +228,6 @@ const GROUP_RING: Record<LetterGroup, string> = {
         setTouched(t => ({ ...t, [name]: true }));
       };
 
-      const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setCvFile(file);
-      
-        const reader = new FileReader();
-        reader.onload = () => setCvText(reader.result as string);
-        reader.readAsText(file);
-      };
-      
-      const handleRemoveFile = () => {
-        setCvFile(null);
-        setCvText('');
-      };
       
     
       // ——— Toggle helpers
@@ -315,7 +320,12 @@ const GROUP_RING: Record<LetterGroup, string> = {
         // Applicant
         const applicantFull = `${form.applicantFirstName} ${form.applicantLastName}`.trim();
         let applicantLine = `Applicant: ${applicantFull}`;
-        if (form.applicantSex) applicantLine += ` (${form.applicantSex})`;
+        if (form.applicantSex) {
+          const sexLabel = PROMPT_SEX_LABELS[form.applicantSex] || form.applicantSex;
+          applicantLine += ` (${sexLabel})`;
+        }
+        
+        
         if (form.applicantPosition) applicantLine += `, applying for ${form.applicantPosition}`;
         applicantLine += '.';
         out.push(applicantLine);
@@ -340,6 +350,11 @@ const GROUP_RING: Record<LetterGroup, string> = {
           `Perspective: ${form.perspective === 'first' ? 'first-person (I)' : 'institutional (We)'}.`
         );
         if (form.styleTags.length) out.push(`Writing style: ${form.styleTags.join(', ')}.`);
+        // Añade la instrucción de estilo único
+        if (form.writingStyle) {
+          out.push(`Use a ${form.writingStyle.toLowerCase()} writing style.`);
+        }
+
         // 1) Localiza y elimina esta línea dentro de buildPrompt():
 //    if (form.includeAnecdote) out.push('Include a short anecdote.');
 
@@ -648,14 +663,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
         out.push(`Creativity/temperature: ${form.creativity}.`);
 
         // Incluye el texto del textarea como contexto adicional
-        if (cvText.trim()) {
-          // Solo tomamos un fragmento, para no reventar el body
-          const snippet = cvText.trim().slice(0, 2000);
-          out.push(
-            `Applicant CV/Resume content (primeros 2000 caracteres): ` +
-            `${snippet}${cvText.length > 2000 ? '…' : ''}.`
-          );
-        }
+
 
 
         if (form.supportingText.trim()) { 
@@ -1100,18 +1108,20 @@ const GROUP_RING: Record<LetterGroup, string> = {
           Sex <span className="text-red-500">*</span>
         </label>
         <select
-          id="applicantSex"
-          name="applicantSex"
-          value={form.applicantSex}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3 text-gray-900 dark:text-white"
-        >
-          <option value="">—</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
-        </select>
+            id="applicantSex"
+            name="applicantSex"
+            value={form.applicantSex}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            className="w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-3 text-gray-900 dark:text-white"
+          >
+            {(['','male','female','other'] as const).map(v => (
+              <option key={v} value={v}>
+                {UI_SEX_LABELS[v]}
+              </option>
+            ))}
+          </select>
+
         {touched.applicantSex && !form.applicantSex && (
           <p className="text-red-500 text-sm mt-1">Required.</p>
         )}
@@ -1367,44 +1377,6 @@ const GROUP_RING: Record<LetterGroup, string> = {
   </div>
 </div>
 
-{/* ── Upload Applicant’s CV/Resume ── */}
-<div className="col-span-full mb-6">
-  <label className="block font-semibold mb-2">
-    Upload Applicant’s CV/Resume <span className="text-sm text-gray-400">(optional)</span>
-  </label>
-
-  {!cvFile ? (
-    <>
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        className="w-full py-3 border-2 border-blue-600 bg-gray-100 text-black rounded-lg transition hover:bg-gray-200"
-      >
-        Click to Upload Applicant’s CV/Resume <span className="text-sm text-gray-400">(optional)</span>
-      </button>
-      <input
-        type="file"
-        accept=".pdf,.doc,.docx,.txt"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        className="hidden"
-      />
-    </>
-  ) : (
-    <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-      <span className="truncate">{cvFile.name}</span>
-      <button
-        type="button"
-        onClick={handleRemoveFile}
-        className="text-red-600 hover:underline"
-      >
-        Remove
-      </button>
-    </div>
-  )}
-</div>
-
-
 
 {/* 7 · Supporting Document Text */}
 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -1412,7 +1384,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
     <label htmlFor="supportingText" className="block font-semibold mb-2">
       Add more context {' '} <span className="text-sm text-gray-400">(optional)</span> {' '}{' '}
       <span className="text-sm italic font-normal">
-        e.g., job posting, scholarship instructions, visa application, etc.
+        e.g., Applicant's CV or Resume, job posting, scholarship instructions, visa application, etc.
       </span>
     </label>
     <textarea
@@ -1420,9 +1392,9 @@ const GROUP_RING: Record<LetterGroup, string> = {
       name="supportingText"
       value={form.supportingText}
       onChange={handleChange}
-      placeholder="Paste any relevant info here…"
-      rows={3}
-      maxLength={3900}
+      placeholder="Paste any relevant info here..."
+      rows={4}
+      maxLength={9900}
       className="w-full p-3 border-2 border-dashed rounded-lg
                  bg-white dark:bg-gray-700 resize-none"
     />
@@ -1559,7 +1531,7 @@ const GROUP_RING: Record<LetterGroup, string> = {
                 <button onClick={()=>{setDraft('');setCurrentStep(1);setForm(initialForm);scrollToTop();}}
                         className="w-full py-4 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white
                                    rounded-xl font-semibold hover:bg-gray-400 dark:hover:bg-gray-500">
-                  🔄 Generate A New Letter
+                  🔄 Start Over
                 </button>
               </div>)}
           </main>
