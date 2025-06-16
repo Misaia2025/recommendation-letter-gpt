@@ -13,6 +13,9 @@
     import Confetti from 'react-confetti';
     import { Document, Packer, Paragraph, TextRun, AlignmentType } from 'docx';
     import { saveAs } from 'file-saver';
+    import { HiMiniArrowRight, HiMiniXCircle } from 'react-icons/hi2';
+    
+    
     // ─── Etiquetas para el campo “Sex” ───
     const SEX_LABELS: Record<string,string> = {
       male:   'Male',
@@ -196,7 +199,18 @@ const GROUP_RING: Record<LetterGroup, string> = {
       
       const [errorMsg, setErrorMsg] = useState('');
       const [successMsg, setSuccessMsg] = useState('');
-      
+      // ─── Guest count & modal flags ───
+      const [letterCount, setLetterCount] = useState(0);
+      const [showLastLetterModal, setShowLastLetterModal] = useState(false);
+      const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
+
+      // Carga de guest count desde localStorage
+      useEffect(() => {
+        const key = isGuest ? 'guestLetterCount' : `userLetterCount_${user?.id}`;
+        const stored = localStorage.getItem(key) || '0';
+        setLetterCount(Number(stored));
+      }, [isGuest, user?.id]);
+
       
     
       /* ——————————————————————————————————— MISC CONSTANTS */
@@ -759,9 +773,33 @@ const GROUP_RING: Record<LetterGroup, string> = {
       /* ------------------ Submit handler (unchanged flow, new builder) */
       const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (isGuest && localStorage.getItem('guestUsed')) { window.location.href = '/login'; return; }
-    
-        setErrorMsg(''); setIsGenerating(true);
+      
+      // ─── Lógica combinada de créditos ───
+      const maxFree = 3;
+
+      if (isGuest) {
+        if (letterCount >= maxFree) {
+          setShowNoCreditsModal(true);
+          return;
+        }
+        if (letterCount === maxFree - 0) {
+          setShowNoCreditsModal(true);
+          return;        // ← así evitamos que siga y genere la 3ª carta
+        }
+            
+      } else {
+        // si user.credits ≤ 0 → modal “sin créditos”
+        if ((user?.credits ?? 0) <= 0) {
+          setShowNoCreditsModal(true);
+          return;
+        }
+      }
+
+      // -- continúa con tu setErrorMsg & setIsGenerating --
+      setErrorMsg('');
+      setIsGenerating(true);
+
+      
   
       try {
         // b) build prompt & call GPT
@@ -775,11 +813,23 @@ const GROUP_RING: Record<LetterGroup, string> = {
       const res: any = await generateGptResponse({ prompt });
           setDraft(res.text || ''); if (isGuest) localStorage.setItem('guestUsed', '1');
           setShowConfetti(true); setSuccessMsg('Your letter is ready!'); setTimeout(()=>setSuccessMsg(''),3e3);
+          if (isGuest) {
+            const newCount = letterCount + 1;
+            setLetterCount(newCount);
+            localStorage.setItem('guestLetterCount', newCount.toString());
+          }
+          
         } catch (err:any) {
           console.error(err);
-          if (err.message === 'NO_CREDITS') window.location.href = '/pricing?credits=0';
-          else setErrorMsg('Oops! Something went wrong.');
+          if (err.message === 'NO_CREDITS') {
+            setShowNoCreditsModal(true);
+          } else {
+            setErrorMsg('Oops! Something went wrong.');
+          }
+          
         } finally { setIsGenerating(false); scrollToTop(); }
+        // ─── Actualizar conteo y persistirlo ───
+
       };
     
       /* ------------------ Word export (unchanged) */
@@ -836,6 +886,80 @@ const GROUP_RING: Record<LetterGroup, string> = {
     
       return (
         <>
+      {showLastLetterModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm text-center">
+            <p className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+              🔔 One free letter remaining!
+            </p>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              After this one, you’ll need credits to generate more recommendation letters.
+            </p>
+            <button
+              onClick={() => setShowLastLetterModal(false)}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600
+                        text-white rounded-lg hover:from-green-500 hover:to-purple-700 transition"
+            >
+              Continue
+              <HiMiniArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+
+      {showNoCreditsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm text-center">
+            <p className="text-lg font-semibold mb-4 text-red-600">
+              🚫 No letters remaining
+            </p>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              To continue, please visit Pricing.
+            </p>
+            <button
+              onClick={() => window.location.href = '/pricing'}
+              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500
+                        text-white rounded-lg hover:from-pink-500 hover:to-red-600 transition"
+            >
+              Go to Pricing
+              <HiMiniArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+
+        {/* ─── Sin créditos (guests tras 2 o usuarios loggeados sin tokens) ─── */}
+        {showNoCreditsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+            {/* Título con icono */}
+            <div className="flex justify-center mb-4">
+              <HiMiniXCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <p className="text-2xl font-semibold text-red-600 mb-6">
+              No Letters Remaining
+            </p>
+            <p className="text-lg text-gray-700 dark:text-gray-300 mb-8">
+              To continue generating letters, please visit our pricing page.
+            </p>
+            <button
+              onClick={() => window.location.href = '/pricing'}
+              className="inline-flex items-center justify-center w-full px-6 py-3 
+                        bg-gradient-to-r from-purple-500 via-pink-500 to-red-500
+                        text-white text-lg font-semibold rounded-xl shadow-lg
+                        hover:scale-105 transform transition"
+            >
+              Go to Pricing
+              <HiMiniArrowRight className="ml-2 h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      )}
+
+
+
           {isGenerating && <LoadingCurtain />}
           <main
             ref={mainRef}
